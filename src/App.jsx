@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { ethers } from "ethers";
-import Token from "./Token.json";
+import ClaimableToken from "./ClaimableToken.json";
 
 // MVP single-file UI mock (no blockchain wired yet)
 // Tailwind only. Dark theme, simple modern buttons.
@@ -164,28 +164,53 @@ export default function MvpTokenApp() {
     try {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-      const factory = new ethers.ContractFactory(Token.abi, Token.bytecode, signer);
-      const contract = await factory.deploy(name || "Token", symbol || "TKN");
+      const factory = new ethers.ContractFactory(
+        ClaimableToken.abi,
+        ClaimableToken.bytecode,
+        signer
+      );
+      const contract = await factory.deploy(
+        name || "Token",
+        symbol || "TKN",
+        author || "",
+        description || "",
+        logoId.toString()
+      );
       await contract.waitForDeployment();
       setTokenAddress(contract.target);
 
-      setMode("claim");
-      setRemaining(TOTAL);
-      setClaimedCount(0);
+      const rem = await contract.remaining();
+      const count = await contract.claimCount();
+      setRemaining(Number(ethers.formatUnits(rem, 18)));
+      setClaimedCount(Number(count));
       setClaimHistory([]);
+      setMode("claim");
     } catch (err) {
       console.error("Deploy failed", err);
     }
   };
 
-  const doClaim = () => {
-    if (remaining <= 0) return;
-    const amount = Math.min(100, remaining);
-    const newRemaining = Math.max(0, remaining - amount);
-    const newClaimed = TOTAL - newRemaining;
-    setRemaining(newRemaining);
-    setClaimedCount((c) => c + 1);
-    setClaimHistory((h) => [...h, newClaimed]);
+  const doClaim = async () => {
+    if (!connected || !tokenAddress) return;
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(
+        tokenAddress,
+        ClaimableToken.abi,
+        signer
+      );
+      const tx = await contract.claim();
+      await tx.wait();
+      const rem = await contract.remaining();
+      const count = await contract.claimCount();
+      const remainingTokens = Number(ethers.formatUnits(rem, 18));
+      setRemaining(remainingTokens);
+      setClaimedCount(Number(count));
+      setClaimHistory((h) => [...h, TOTAL - remainingTokens]);
+    } catch (err) {
+      console.error("Claim failed", err);
+    }
   };
 
   const claimedSoFar = Math.max(0, TOTAL - remaining);
