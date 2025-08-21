@@ -1,4 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
+import { ethers } from "ethers";
+import Token from "./Token.json";
 
 // MVP single-file UI mock (no blockchain wired yet)
 // Tailwind only. Dark theme, simple modern buttons.
@@ -128,6 +130,8 @@ export default function MvpTokenApp() {
   const [author, setAuthor] = useState("");
   const [description, setDescription] = useState("");
   const [connected, setConnected] = useState(false);
+  const [account, setAccount] = useState(null);
+  const [tokenAddress, setTokenAddress] = useState(null);
   const mainRef = useRef(null);
 
   // mock token detail preview
@@ -155,12 +159,23 @@ export default function MvpTokenApp() {
     }
   }, [mode]);
 
-  const doCreate = () => {
-    // purely visual for the MVP design preview
-    setMode("claim");
-    setRemaining(TOTAL);
-    setClaimedCount(0);
-    setClaimHistory([]);
+  const doCreate = async () => {
+    if (!connected) return;
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const factory = new ethers.ContractFactory(Token.abi, Token.bytecode, signer);
+      const contract = await factory.deploy(name || "Token", symbol || "TKN");
+      await contract.waitForDeployment();
+      setTokenAddress(contract.target);
+
+      setMode("claim");
+      setRemaining(TOTAL);
+      setClaimedCount(0);
+      setClaimHistory([]);
+    } catch (err) {
+      console.error("Deploy failed", err);
+    }
   };
 
   const doClaim = () => {
@@ -174,6 +189,20 @@ export default function MvpTokenApp() {
   };
 
   const claimedSoFar = Math.max(0, TOTAL - remaining);
+
+  const connectWallet = async () => {
+    if (!window.ethereum) {
+      alert("Wallet not found");
+      return;
+    }
+    try {
+      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+      setConnected(true);
+      setAccount(accounts[0]);
+    } catch (err) {
+      console.error("Wallet connection failed", err);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -192,9 +221,9 @@ export default function MvpTokenApp() {
             {mode !== "home" && (
               <button
                 className={`rounded-xl bg-white px-3 py-2 text-sm font-medium text-black shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-white/30`}
-                onClick={() => setConnected((c) => !c)}
+                onClick={!connected ? connectWallet : undefined}
               >
-                {connected ? "Wallet connected" : "Connect wallet"}
+                {connected && account ? `${account.slice(0, 6)}…${account.slice(-4)}` : "Connect wallet"}
               </button>
             )}
           </div>
@@ -355,7 +384,9 @@ export default function MvpTokenApp() {
             </div>
 
             <div className="mt-6 flex items-center justify-between">
-              <div className="text-xs text-zinc-400">Contract addresses (after deploy): Token • Pool • Factory</div>
+              <div className="text-xs text-zinc-400">
+                {tokenAddress ? `Token contract: ${tokenAddress}` : "Contract address will appear after deployment"}
+              </div>
               <CtaButton label={remaining > 0 ? (remaining >= 100 ? "Claim 100" : `Claim ${remaining}`) : "Pool empty"} onClick={doClaim} disabled={!connected || remaining === 0} />
             </div>
 
