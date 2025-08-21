@@ -195,6 +195,12 @@ export default function MvpTokenApp() {
   const [claimedCount, setClaimedCount] = useState(0);
   const [claimHistory, setClaimHistory] = useState([]); // cumulative claimed values
 
+  // persisted pools list
+  const [pools, setPools] = useState([]);
+  const [selectedPool, setSelectedPool] = useState(null);
+  const [poolStats, setPoolStats] = useState(null);
+  const [claimFeed, setClaimFeed] = useState([]);
+
   const formValid = name.trim() && symbol.trim() && author.trim() && description.trim();
 
   const sampleToken = useMemo(
@@ -270,40 +276,182 @@ export default function MvpTokenApp() {
   };
 
   const doClaim = async () => {
-    if (!connected || !tokenAddress) return;
+    if (!connected || !selectedPool) return;
     try {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(
-        tokenAddress,
-        ClaimableToken.abi,
+        selectedPool,
+        ["function claim()"],
         signer
       );
       const tx = await contract.claim();
       await tx.wait();
-      const rem = await contract.remaining();
-      const count = await contract.claimCount();
-      const remainingTokens = Number(ethers.formatUnits(rem, 18));
-      setRemaining(remainingTokens);
-      setClaimedCount(Number(count));
-      setClaimHistory((h) => [...h, TOTAL - remainingTokens]);
+      await loadPoolData(selectedPool);
     } catch (err) {
       console.error("Claim failed", err);
     }
   };
 
   const poolAbi = [
-    "event Claimed(address indexed by,uint256 amount)",
+    "function token() view returns(address)",
     "function remaining() view returns(uint256)",
+    "function claimAmount() view returns(uint256)",
     "function claimCount() view returns(uint256)",
     "function claimedTotal() view returns(uint256)",
+    "event Claimed(address indexed by,uint256 amount)",
   ];
 
   const tokenAbi = [
-    "function totalSupply() view returns(uint256)",
     "function name() view returns(string)",
     "function symbol() view returns(string)",
+    "function decimals() view returns(uint8)",
+    "function totalSupply() view returns(uint256)",
+    "function balanceOf(address) view returns(uint256)",
   ];
+
+  async function loadPoolData(address) {
+    let entry = pools.find((p) => p.pool === address);
+    if (!entry) {
+      const stored = JSON.parse(localStorage.getItem("tc.pools") || "[]");
+      entry = stored.find((p) => p.pool === address);
+      if (!entry) return;
+    }
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const pool = new ethers.Contract(address, poolAbi, provider);
+      const token = new ethers.Contract(entry.token, tokenAbi, provider);
+      const [rem, claimAmt, count, claimed, name, symbol, decimals, total] =
+        await Promise.all([
+          pool.remaining(),
+          pool.claimAmount(),
+          pool.claimCount(),
+          pool.claimedTotal(),
+          token.name(),
+          token.symbol(),
+          token.decimals(),
+          token.totalSupply(),
+        ]);
+      let balance = null;
+      try {
+        if (account) {
+          balance = await token.balanceOf(account);
+        }
+      } catch (_) {}
+      const logs = await provider.getLogs({
+        address,
+        topics: [ethers.id("Claimed(address,uint256)")],
+        fromBlock: entry.fromBlock,
+        toBlock: "latest",
+      });
+      const iface = new ethers.Interface(poolAbi);
+      const claimers = new Set();
+      logs.forEach((log) => {
+        try {
+          const parsed = iface.parseLog(log);
+          claimers.add(parsed.args.by.toLowerCase());
+        } catch (_) {}
+      });
+      const recent = logs
+        .slice(-5)
+        .reverse()
+        .map((log) => {
+          const parsed = iface.parseLog(log);
+          return {
+            by: parsed.args.by,
+            amount: Number(ethers.formatUnits(parsed.args.amount, decimals)),
+            blockNumber: log.blockNumber,
+          };
+        });
+      setPoolStats({
+        remaining: Number(ethers.formatUnits(rem, decimals)),
+        claimAmount: Number(ethers.formatUnits(claimAmt, decimals)),
+        claimCount: Number(count),
+        claimedTotal: Number(ethers.formatUnits(claimed, decimals)),
+        totalSupply: Number(ethers.formatUnits(total, decimals)),
+        tokenName: name,
+        symbol,
+        decimals: Number(decimals),
+        uniqueClaimers: claimers.size,
+        balance:
+          balance !== null ? Number(ethers.formatUnits(balance, decimals)) : null,
+      });
+      setClaimFeed(recent);
+    } catch (err) {
+      console.error("Load pool data failed", err);
+      setPoolStats(null);
+      setClaimFeed([]);
+    }
+  }
+
+  const addPool = async () => {
+    try {
+      const addr = prompt("Pool address?");
+      if (!addr || !ethers.isAddress(addr)) return;
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const pool = new ethers.Contract(addr, poolAbi, provider);
+      const [tokenAddr, fromBlock, network] = await Promise.all([
+        pool.token(),
+        provider.getBlockNumber(),
+        provider.getNetwork(),
+      ]);
+      const token = new ethers.Contract(tokenAddr, tokenAbi, provider);
+      let name = "";
+      let symbol = "";
+      try {
+        [name, symbol] = await Promise.all([token.name(), token.symbol()]);
+      } catch (_) {}
+      const label = name
+        ? `${name} (${symbol})`
+        : `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+      const entry = {
+        label,
+        pool: addr,
+        token: tokenAddr,
+        chainId: Number(network.chainId),
+        addedAt: Date.now(),
+        fromBlock,
+      };
+      const updated = [...pools.filter((p) => p.pool !== addr), entry];
+      setPools(updated);
+      localStorage.setItem("tc.pools", JSON.stringify(updated));
+      setSelectedPool(addr);
+    } catch (err) {
+      console.error("Add pool failed", err);
+    }
+  };
+
+  const refreshPool = () => {
+    if (selectedPool) loadPoolData(selectedPool);
+  };
+
+  const removePool = () => {
+    if (!selectedPool) return;
+    const updated = pools.filter((p) => p.pool !== selectedPool);
+    setPools(updated);
+    localStorage.setItem("tc.pools", JSON.stringify(updated));
+    const next = updated[0]?.pool || null;
+    setSelectedPool(next);
+    if (next) {
+      localStorage.setItem("tc.selectedPool", next);
+    } else {
+      localStorage.removeItem("tc.selectedPool");
+    }
+  };
+
+  useEffect(() => {
+    const stored = JSON.parse(localStorage.getItem("tc.pools") || "[]");
+    setPools(stored);
+    const sel = localStorage.getItem("tc.selectedPool");
+    if (sel) setSelectedPool(sel);
+  }, []);
+
+  useEffect(() => {
+    if (selectedPool) {
+      localStorage.setItem("tc.selectedPool", selectedPool);
+      loadPoolData(selectedPool);
+    }
+  }, [selectedPool]);
 
   const refreshEntry = async (item) => {
     try {
@@ -311,11 +459,12 @@ export default function MvpTokenApp() {
       const pool = new ethers.Contract(item.pool, poolAbi, provider);
       const token = new ethers.Contract(item.token, tokenAbi, provider);
       setHistoryStats((s) => ({ ...s, [item.token]: { ...s[item.token], loading: true } }));
-      const [rem, count, claimed, total] = await Promise.all([
+      const [rem, count, claimed, total, decimals] = await Promise.all([
         pool.remaining(),
         pool.claimCount(),
         pool.claimedTotal(),
         token.totalSupply(),
+        token.decimals(),
       ]);
       const logs = await provider.getLogs({
         address: item.pool,
@@ -335,10 +484,10 @@ export default function MvpTokenApp() {
         ...s,
         [item.token]: {
           loading: false,
-          remaining: Number(ethers.formatUnits(rem, 18)),
+          remaining: Number(ethers.formatUnits(rem, decimals)),
           claimCount: Number(count),
-          claimedTotal: Number(ethers.formatUnits(claimed, 18)),
-          totalSupply: Number(ethers.formatUnits(total, 18)),
+          claimedTotal: Number(ethers.formatUnits(claimed, decimals)),
+          totalSupply: Number(ethers.formatUnits(total, decimals)),
           uniqueClaimers: claimers.size,
         },
       }));
@@ -520,51 +669,99 @@ export default function MvpTokenApp() {
               </button>
             </div>
 
-            <div className="flex items-start gap-4">
-              {/* Logo render */}
-              <div className="mt-1 flex h-14 w-14 items:center justify-center rounded-2xl border border-white/10 bg-white/5 shadow-sm">
-                {sampleToken.logoId === 0 && (
-                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-zinc-300 to-zinc-500" />
-                )}
-                {sampleToken.logoId === 1 && (
-                  <div className="h-8 w-8 rotate-45 rounded-lg bg-gradient-to-br from-zinc-400 to-zinc-700" />
-                )}
-                {sampleToken.logoId === 2 && (
-                  <div className="h-8 w-8 bg-[conic-gradient(at_50%_50%,#a1a1aa,#52525b,#a1a1aa)] rounded-full" />
-                )}
-              </div>
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <select
+                value={selectedPool || ""}
+                onChange={(e) => setSelectedPool(e.target.value)}
+                className="flex-1 rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white backdrop-blur"
+              >
+                {pools.length === 0 && <option value="" disabled>No pools</option>}
+                {pools.map((p) => (
+                  <option value={p.pool} key={p.pool}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={addPool}
+                className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-xs text-zinc-200 transition hover:bg-white/20"
+              >
+                Add pool
+              </button>
+              <button
+                onClick={refreshPool}
+                className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-xs text-zinc-200 transition hover:bg-white/20"
+              >
+                Refresh
+              </button>
+              <button
+                onClick={removePool}
+                className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-xs text-zinc-200 transition hover:bg-white/20"
+              >
+                Remove
+              </button>
+            </div>
 
-              <div className="flex-1">
+            {!selectedPool && (
+              <div className="text-sm text-zinc-400">No pool selected.</div>
+            )}
+
+            {selectedPool && poolStats && (
+              <>
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-lg font-semibold">{sampleToken.name}</h3>
+                  <h3 className="text-lg font-semibold">{poolStats.tokenName}</h3>
                   <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-zinc-200">
-                    {sampleToken.symbol}
+                    {poolStats.symbol}
                   </span>
                 </div>
-                <div className="mt-1 text-sm text-zinc-300">{sampleToken.description}</div>
-                <div className="mt-2 text-xs text-zinc-400">Author: {sampleToken.author}</div>
-              </div>
-            </div>
 
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
-              <Stat label="Remaining pool" value={remaining.toLocaleString()} hint="out of 1,000,000" />
-              <Stat label="Claim per tx" value="100" />
-              <Stat label="Claim count" value={claimedCount.toLocaleString()} />
-            </div>
+                <div className="mt-6 grid gap-4 md:grid-cols-3">
+                  <Stat label="Remaining" value={poolStats.remaining.toLocaleString()} />
+                  <Stat label="Claim per tx" value={poolStats.claimAmount.toLocaleString()} />
+                  <Stat label="Claim count" value={poolStats.claimCount.toLocaleString()} />
+                </div>
 
-            <div className="mt-6">
-              <Progress total={TOTAL} remaining={remaining} />
-            </div>
+                <div className="mt-6 grid gap-4 md:grid-cols-2">
+                  <Stat label="Claimed total" value={poolStats.claimedTotal.toLocaleString()} />
+                  <Stat label="Unique claimers" value={poolStats.uniqueClaimers.toString()} />
+                </div>
 
-            <div className="mt-6 flex items-center justify-between">
-              <div className="text-xs text-zinc-400">
-                {tokenAddress ? `Token contract: ${tokenAddress}` : "Contract address will appear after deployment"}
-              </div>
-              <CtaButton label={remaining > 0 ? (remaining >= 100 ? "Claim 100" : `Claim ${remaining}`) : "Pool empty"} onClick={doClaim} disabled={!connected || remaining === 0} />
-            </div>
+                <div className="mt-6">
+                  <Progress total={poolStats.totalSupply} remaining={poolStats.remaining} />
+                </div>
 
-            {!connected && (
-              <div className="mt-3 text-xs text-amber-300">Connect your wallet to claim tokens.</div>
+                {poolStats.balance != null && (
+                  <div className="mt-2 text-xs text-zinc-400">Your balance: {poolStats.balance}</div>
+                )}
+
+                <div className="mt-6">
+                  <div className="mb-2 text-sm text-zinc-300">Last claims</div>
+                  {claimFeed.length === 0 ? (
+                    <div className="text-xs text-zinc-400">No claims yet.</div>
+                  ) : (
+                    <ul className="space-y-1 text-xs text-zinc-400">
+                      {claimFeed.map((c, i) => (
+                        <li key={i}>
+                          {c.by.slice(0, 6)}…{c.by.slice(-4)} — {c.amount} ({c.blockNumber})
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <div className="mt-6 flex items-center justify-between">
+                  <div className="text-xs text-zinc-400">Pool: {selectedPool}</div>
+                  <CtaButton
+                    label={poolStats.remaining > 0 ? `Claim ${poolStats.claimAmount}` : "Pool empty"}
+                    onClick={doClaim}
+                    disabled={!connected || poolStats.remaining === 0}
+                  />
+                </div>
+
+                {!connected && (
+                  <div className="mt-3 text-xs text-amber-300">Connect your wallet to claim tokens.</div>
+                )}
+              </>
             )}
           </section>
         )}
