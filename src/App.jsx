@@ -174,6 +174,8 @@ export default function MvpTokenApp() {
     logoURI: "",
   });
 
+  const [factoryAddress, setFactoryAddress] = useState(FACTORY_ADDRESS || "");
+
   const formValid = name.trim() && symbol.trim() && author.trim() && description.trim();
 
   const sampleToken = useMemo(
@@ -238,14 +240,14 @@ export default function MvpTokenApp() {
 
   const doCreate = async () => {
     if (!connected) return;
-    if (!FACTORY_ADDRESS) {
+    if (!factoryAddress) {
       alert("Factory address not set");
       return;
     }
     try {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-      const factory = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, signer);
+      const factory = new ethers.Contract(factoryAddress, FACTORY_ABI, signer);
       const logos = ["logoA", "logoB", "logoC"];
       const tx = await factory.createAll(
         name || "Token",
@@ -369,6 +371,15 @@ export default function MvpTokenApp() {
             <div className="grid gap-6 md:grid-cols-2">
               <div className="space-y-6">
                 <div>
+                  <label className="mb-1 block text-sm text-zinc-300">Factory address *</label>
+                  <input
+                    className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none placeholder:text-zinc-500 focus:ring-2 focus:ring-emerald-400/30"
+                    placeholder="0x..."
+                    value={factoryAddress}
+                    onChange={(e) => setFactoryAddress(e.target.value)}
+                  />
+                </div>
+                <div>
                   <label className="mb-1 block text-sm text-zinc-300">Token name *</label>
                   <input
                     className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none placeholder:text-zinc-500 focus:ring-2 focus:ring-emerald-400/30"
@@ -433,7 +444,7 @@ export default function MvpTokenApp() {
 
             <div className="mt-6 flex items-center justify-between">
               <div className="text-xs text-zinc-400">Supply: {totalSupply.toLocaleString()} • Claim reward: {claimAmount.toLocaleString()}</div>
-              <CtaButton label="Create token" onClick={doCreate} disabled={!connected || !formValid} />
+              <CtaButton label="Create token" onClick={doCreate} disabled={!connected || !formValid || !factoryAddress} />
             </div>
 
             {!connected && (
