@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
+import { ethers } from "ethers";
 
 // MVP single-file UI mock (no blockchain wired yet)
 // Tailwind only. Dark theme, simple modern buttons.
@@ -127,6 +128,9 @@ export default function MvpTokenApp() {
   const [author, setAuthor] = useState("");
   const [description, setDescription] = useState("");
   const [connected, setConnected] = useState(false);
+  const [signer, setSigner] = useState(null);
+  const [tokenAddr, setTokenAddr] = useState("");
+  const [poolAddr, setPoolAddr] = useState("");
   const mainRef = useRef(null);
 
   // mock token detail preview
@@ -148,28 +152,87 @@ export default function MvpTokenApp() {
     [name, symbol, author, description, logoId]
   );
 
+  const FACTORY_ADDRESS = "0x0000000000000000000000000000000000000000"; // replace with deployed factory address
+  const FACTORY_ABI = [
+    "function createAll(string name_, string symbol_, string author_, string description_, string logoURI_) returns (address tokenAddr, address poolAddr)",
+    "event Created(address indexed creator, address token, address pool)"
+  ];
+  const POOL_ABI = [
+    "function claim()",
+    "function remaining() view returns (uint256)",
+    "function claimCount() view returns (uint256)"
+  ];
+
   useEffect(() => {
     if (mode !== "home" && mainRef.current) {
       mainRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [mode]);
 
-  const doCreate = () => {
-    // purely visual for the MVP design preview
-    setMode("claim");
-    setRemaining(TOTAL);
-    setClaimedCount(0);
-    setClaimHistory([]);
+  const connectWallet = async () => {
+    if (!window.ethereum) return;
+    try {
+      const prov = new ethers.BrowserProvider(window.ethereum);
+      await prov.send("eth_requestAccounts", []);
+      const signer = await prov.getSigner();
+      setSigner(signer);
+      setConnected(true);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const doClaim = () => {
-    if (remaining <= 0) return;
-    const amount = Math.min(100, remaining);
-    const newRemaining = Math.max(0, remaining - amount);
-    const newClaimed = TOTAL - newRemaining;
-    setRemaining(newRemaining);
-    setClaimedCount((c) => c + 1);
-    setClaimHistory((h) => [...h, newClaimed]);
+  const doCreate = async () => {
+    if (!signer) return;
+    try {
+      const factory = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, signer);
+      const logoURI = `logo-${logoId}`;
+      const [tokenAddress, poolAddress] = await factory.createAll.staticCall(
+        name,
+        symbol,
+        author,
+        description,
+        logoURI
+      );
+      const tx = await factory.createAll(
+        name,
+        symbol,
+        author,
+        description,
+        logoURI
+      );
+      await tx.wait();
+      setTokenAddr(tokenAddress);
+      setPoolAddr(poolAddress);
+      setMode("claim");
+      const pool = new ethers.Contract(poolAddress, POOL_ABI, signer);
+      const rem = await pool.remaining();
+      const count = await pool.claimCount();
+      setRemaining(Number(rem / 10n ** 18n));
+      setClaimedCount(Number(count));
+      setClaimHistory([]);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const doClaim = async () => {
+    if (!signer || !poolAddr) return;
+    try {
+      const pool = new ethers.Contract(poolAddr, POOL_ABI, signer);
+      const tx = await pool.claim();
+      await tx.wait();
+      const [rem, count] = await Promise.all([
+        pool.remaining(),
+        pool.claimCount()
+      ]);
+      const remainingTokens = Number(rem / 10n ** 18n);
+      setRemaining(remainingTokens);
+      setClaimedCount(Number(count));
+      setClaimHistory((h) => [...h, TOTAL - remainingTokens]);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const claimedSoFar = Math.max(0, TOTAL - remaining);
@@ -191,7 +254,8 @@ export default function MvpTokenApp() {
             {mode !== "home" && (
               <button
                 className={`rounded-xl bg-white px-3 py-2 text-sm font-medium text-black shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-white/30`}
-                onClick={() => setConnected((c) => !c)}
+                onClick={connectWallet}
+                disabled={connected}
               >
                 {connected ? "Wallet connected" : "Connect wallet"}
               </button>
@@ -354,7 +418,11 @@ export default function MvpTokenApp() {
             </div>
 
             <div className="mt-6 flex items-center justify-between">
-              <div className="text-xs text-zinc-400">Contract addresses (after deploy): Token • Pool • Factory</div>
+              <div className="text-xs text-zinc-400">
+                {tokenAddr
+                  ? `Token: ${tokenAddr} • Pool: ${poolAddr} • Factory: ${FACTORY_ADDRESS}`
+                  : "Contract addresses (after deploy): Token • Pool • Factory"}
+              </div>
               <CtaButton label={remaining > 0 ? (remaining >= 100 ? "Claim 100" : `Claim ${remaining}`) : "Pool empty"} onClick={doClaim} disabled={!connected || remaining === 0} />
             </div>
 
