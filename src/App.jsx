@@ -121,9 +121,62 @@ function CtaButton({ label, onClick, disabled = false }) {
   );
 }
 
+function shorten(addr) {
+  return addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : "";
+}
+
+function relativeTime(ts) {
+  const diff = Math.floor((Date.now() - ts) / 1000);
+  if (diff < 60) return `${diff}s ago`;
+  const m = Math.floor(diff / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
+}
+
+function HistoryItem({ item, stats, onRefresh }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="font-semibold">
+            {item.name} / {item.symbol}
+          </div>
+          <div className="mt-1 text-xs text-zinc-400">
+            Token {shorten(item.token)} • Pool {shorten(item.pool)} • Chain {item.chainId}
+          </div>
+          <div className="mt-1 text-xs text-zinc-400">{relativeTime(item.createdAt)}</div>
+        </div>
+        <button
+          onClick={onRefresh}
+          className="rounded-xl border border-white/10 bg-white/10 px-3 py-1 text-xs text-zinc-200 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
+        >
+          Refresh
+        </button>
+      </div>
+      {stats?.loading ? (
+        <div className="mt-4 flex justify-center">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2 md:grid-cols-3">
+          <div>
+            Claimed: {stats?.claimedTotal?.toLocaleString() || 0} / {stats?.totalSupply?.toLocaleString() || 0}
+          </div>
+          <div>Remaining: {stats?.remaining?.toLocaleString() || 0}</div>
+          <div>Claim count: {stats?.claimCount ?? 0}</div>
+          <div>Unique claimers: {stats?.uniqueClaimers ?? 0}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function MvpTokenApp() {
   // --- UI state (mock only) ---
-  const [mode, setMode] = useState("home"); // home | create | claim
+  const [mode, setMode] = useState("home"); // home | create | claim | history
   const [logoId, setLogoId] = useState(0);
   const [name, setName] = useState("");
   const [symbol, setSymbol] = useState("");
@@ -132,6 +185,8 @@ export default function MvpTokenApp() {
   const [connected, setConnected] = useState(false);
   const [account, setAccount] = useState(null);
   const [tokenAddress, setTokenAddress] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [historyStats, setHistoryStats] = useState({});
   const mainRef = useRef(null);
 
   // mock token detail preview
@@ -159,6 +214,11 @@ export default function MvpTokenApp() {
     }
   }, [mode]);
 
+  useEffect(() => {
+    const stored = JSON.parse(localStorage.getItem("tc.history") || "[]");
+    setHistory(stored);
+  }, []);
+
   const doCreate = async () => {
     if (!connected) return;
     try {
@@ -184,6 +244,25 @@ export default function MvpTokenApp() {
       setRemaining(Number(ethers.formatUnits(rem, 18)));
       setClaimedCount(Number(count));
       setClaimHistory([]);
+
+      const blockNumber = await provider.getBlockNumber();
+      const network = await provider.getNetwork();
+      const entry = {
+        chainId: Number(network.chainId),
+        createdAt: Date.now(),
+        token: contract.target,
+        pool: contract.target,
+        name: name || "Token",
+        symbol: symbol || "TKN",
+        author: author || "",
+        description: description || "",
+        logoId,
+        poolCreationBlock: blockNumber,
+      };
+      const stored = JSON.parse(localStorage.getItem("tc.history") || "[]");
+      stored.unshift(entry);
+      localStorage.setItem("tc.history", JSON.stringify(stored));
+      setHistory(stored);
       setMode("claim");
     } catch (err) {
       console.error("Deploy failed", err);
@@ -212,6 +291,74 @@ export default function MvpTokenApp() {
       console.error("Claim failed", err);
     }
   };
+
+  const poolAbi = [
+    "event Claimed(address indexed by,uint256 amount)",
+    "function remaining() view returns(uint256)",
+    "function claimCount() view returns(uint256)",
+    "function claimedTotal() view returns(uint256)",
+  ];
+
+  const tokenAbi = [
+    "function totalSupply() view returns(uint256)",
+    "function name() view returns(string)",
+    "function symbol() view returns(string)",
+  ];
+
+  const refreshEntry = async (item) => {
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const pool = new ethers.Contract(item.pool, poolAbi, provider);
+      const token = new ethers.Contract(item.token, tokenAbi, provider);
+      setHistoryStats((s) => ({ ...s, [item.token]: { ...s[item.token], loading: true } }));
+      const [rem, count, claimed, total] = await Promise.all([
+        pool.remaining(),
+        pool.claimCount(),
+        pool.claimedTotal(),
+        token.totalSupply(),
+      ]);
+      const logs = await provider.getLogs({
+        address: item.pool,
+        topics: [ethers.id("Claimed(address,uint256)")],
+        fromBlock: item.poolCreationBlock,
+        toBlock: "latest",
+      });
+      const iface = new ethers.Interface(poolAbi);
+      const claimers = new Set();
+      logs.forEach((log) => {
+        try {
+          const parsed = iface.parseLog(log);
+          claimers.add(parsed.args.by.toLowerCase());
+        } catch (_) {}
+      });
+      setHistoryStats((s) => ({
+        ...s,
+        [item.token]: {
+          loading: false,
+          remaining: Number(ethers.formatUnits(rem, 18)),
+          claimCount: Number(count),
+          claimedTotal: Number(ethers.formatUnits(claimed, 18)),
+          totalSupply: Number(ethers.formatUnits(total, 18)),
+          uniqueClaimers: claimers.size,
+        },
+      }));
+    } catch (err) {
+      console.error("Refresh failed", err);
+      setHistoryStats((s) => ({ ...s, [item.token]: { ...s[item.token], loading: false } }));
+    }
+  };
+
+  const clearHistory = () => {
+    localStorage.removeItem("tc.history");
+    setHistory([]);
+    setHistoryStats({});
+  };
+
+  useEffect(() => {
+    if (mode === "history") {
+      history.forEach((h) => refreshEntry(h));
+    }
+  }, [mode, history]);
 
   const claimedSoFar = Math.max(0, TOTAL - remaining);
 
@@ -261,9 +408,10 @@ export default function MvpTokenApp() {
           <div className="mx-auto max-w-2xl text-center">
             <h1 className="text-4xl font-semibold tracking-tight">What do you want to do?</h1>
           </div>
-          <div className="mx-auto mt-10 grid max-w-3xl gap-6 md:grid-cols-2">
+          <div className="mx-auto mt-10 grid max-w-4xl gap-6 md:grid-cols-3">
             <CtaButton label="Create token" onClick={() => setMode("create")} />
             <CtaButton label="Claim tokens" onClick={() => setMode("claim")} />
+            <CtaButton label="History" onClick={() => setMode("history")} />
           </div>
         </section>
       )}
@@ -417,6 +565,41 @@ export default function MvpTokenApp() {
 
             {!connected && (
               <div className="mt-3 text-xs text-amber-300">Connect your wallet to claim tokens.</div>
+            )}
+          </section>
+        )}
+        {mode === "history" && (
+          <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-xl font-semibold">History</h2>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={clearHistory}
+                  className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs text-zinc-200 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
+                >
+                  Clear history
+                </button>
+                <button
+                  onClick={() => setMode("home")}
+                  className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs text-zinc-200 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
+                >
+                  ← Back
+                </button>
+              </div>
+            </div>
+            {history.length === 0 ? (
+              <div className="text-sm text-zinc-400">No history.</div>
+            ) : (
+              <div className="grid gap-4">
+                {history.map((item) => (
+                  <HistoryItem
+                    key={`${item.token}-${item.pool}-${item.createdAt}`}
+                    item={item}
+                    stats={historyStats[item.token]}
+                    onRefresh={() => refreshEntry(item)}
+                  />
+                ))}
+              </div>
             )}
           </section>
         )}
