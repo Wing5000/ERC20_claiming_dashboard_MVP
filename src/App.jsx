@@ -1,6 +1,33 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { ethers } from "ethers";
-import Token from "./Token.json";
+
+const FACTORY_ADDRESS = import.meta.env.VITE_FACTORY_ADDRESS;
+
+// ABI for the factory contract; the createAll signature must remain on one
+// line so ethers can parse it correctly.
+const FACTORY_ABI = [
+  "event Created(address indexed creator, address token, address pool)",
+  "function createAll(string name_, string symbol_, string author_, string description_, string logoURI_) returns (address tokenAddr, address poolAddr)",
+];
+
+const CLAIMPOOL_ABI = [
+  "function claim()",
+  "function remaining() view returns (uint256)",
+  "function claimAmount() view returns (uint256)",
+  "function claimCount() view returns (uint256)",
+  "function claimedTotal() view returns (uint256)",
+  "function token() view returns (address)",
+];
+
+const TOKEN_ABI = [
+  "function name() view returns (string)",
+  "function symbol() view returns (string)",
+  "function decimals() view returns (uint8)",
+  "function totalSupply() view returns (uint256)",
+  "function author() view returns (string)",
+  "function description() view returns (string)",
+  "function logoURI() view returns (string)",
+];
 
 // MVP single-file UI mock (no blockchain wired yet)
 // Tailwind only. Dark theme, simple modern buttons.
@@ -122,7 +149,7 @@ function CtaButton({ label, onClick, disabled = false }) {
 }
 
 export default function MvpTokenApp() {
-  // --- UI state (mock only) ---
+  // --- UI state ---
   const [mode, setMode] = useState("home"); // home | create | claim
   const [logoId, setLogoId] = useState(0);
   const [name, setName] = useState("");
@@ -132,15 +159,27 @@ export default function MvpTokenApp() {
   const [connected, setConnected] = useState(false);
   const [account, setAccount] = useState(null);
   const [tokenAddress, setTokenAddress] = useState(null);
+  const [poolAddress, setPoolAddress] = useState(null);
   const mainRef = useRef(null);
 
-  // mock token detail preview
-  const TOTAL = 1_000_000;
+  const [totalSupply, setTotalSupply] = useState(1_000_000);
   const [remaining, setRemaining] = useState(1_000_000);
+  const [claimAmount, setClaimAmount] = useState(100);
   const [claimedCount, setClaimedCount] = useState(0);
+  const [claimedTotal, setClaimedTotal] = useState(0);
   const [claimHistory, setClaimHistory] = useState([]); // cumulative claimed values
+  const [tokenMeta, setTokenMeta] = useState({
+    name: "",
+    symbol: "",
+    author: "",
+    description: "",
+    logoURI: "",
+  });
 
-  const formValid = name.trim() && symbol.trim() && author.trim() && description.trim();
+  const [factoryAddress, setFactoryAddress] = useState(FACTORY_ADDRESS || "");
+
+  // Ensure form validation returns a boolean
+  const formValid = Boolean(name.trim() && symbol.trim() && author.trim() && description.trim());
 
   const sampleToken = useMemo(
     () => ({
@@ -153,42 +192,134 @@ export default function MvpTokenApp() {
     [name, symbol, author, description, logoId]
   );
 
+  const displayToken = mode === "claim" ? { ...tokenMeta, logoId } : sampleToken;
+
   useEffect(() => {
     if (mode !== "home" && mainRef.current) {
       mainRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [mode]);
 
+  const loadInfo = async (poolAddr) => {
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const pool = new ethers.Contract(poolAddr, CLAIMPOOL_ABI, provider);
+
+    const [remRaw, claimAmtRaw, claimCntRaw, claimedTotRaw, tokenAddr] = await Promise.all([
+      pool.remaining(),
+      pool.claimAmount(),
+      pool.claimCount(),
+      pool.claimedTotal(),
+      pool.token(),
+    ]);
+
+    const rem = Number(ethers.formatUnits(remRaw, 18));
+    const claimAmt = Number(ethers.formatUnits(claimAmtRaw, 18));
+    const claimCnt = Number(claimCntRaw);
+    const claimedTot = Number(ethers.formatUnits(claimedTotRaw, 18));
+
+    const token = new ethers.Contract(tokenAddr, TOKEN_ABI, provider);
+    const [name_, symbol_, decimals_, totalSupplyRaw, author_, description_, logoURI_] = await Promise.all([
+      token.name(),
+      token.symbol(),
+      token.decimals(),
+      token.totalSupply(),
+      token.author(),
+      token.description(),
+      token.logoURI(),
+    ]);
+    const total = Number(ethers.formatUnits(totalSupplyRaw, decimals_));
+
+    setTokenAddress(tokenAddr);
+    setPoolAddress(poolAddr);
+    setRemaining(rem);
+    setClaimAmount(claimAmt);
+    setClaimedCount(claimCnt);
+    setClaimedTotal(claimedTot);
+    setTokenMeta({ name: name_, symbol: symbol_, author: author_, description: description_, logoURI: logoURI_ });
+    setTotalSupply(total);
+
+    return { claimedTotal: claimedTot };
+  };
+
   const doCreate = async () => {
-    if (!connected) return;
+    console.log("Create button clicked", {
+      connected,
+      factoryAddress,
+      formValid,
+      name,
+      symbol,
+      author,
+      description,
+      logoId,
+    });
+    if (!connected) {
+      console.warn("Wallet not connected");
+      return;
+    }
+    if (!factoryAddress) {
+      alert("Factory address not set");
+      return;
+    }
     try {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-      const factory = new ethers.ContractFactory(Token.abi, Token.bytecode, signer);
-      const contract = await factory.deploy(name || "Token", symbol || "TKN");
-      await contract.waitForDeployment();
-      setTokenAddress(contract.target);
+      const factory = new ethers.Contract(factoryAddress, FACTORY_ABI, signer);
+      const logos = ["logoA", "logoB", "logoC"];
+      console.log("Calling createAll on factory", factoryAddress);
+      const tx = await factory.createAll(
+        name || "Token",
+        symbol || "TKN",
+        author || "",
+        description || "",
+        logos[logoId] || ""
+      );
+      console.log("Transaction sent", tx.hash);
+      const receipt = await tx.wait();
+      console.log("Transaction confirmed", receipt);
+
+      let tokenAddr = null;
+      let poolAddr = null;
+      for (const log of receipt.logs) {
+        try {
+          const parsed = factory.interface.parseLog(log);
+          if (parsed.name === "Created") {
+            tokenAddr = parsed.args.token;
+            poolAddr = parsed.args.pool;
+            break;
+          }
+        } catch (err) {
+          // ignore parse errors for unrelated logs
+        }
+      }
+      if (!tokenAddr || !poolAddr) throw new Error("Created event not found");
+      console.log("Deployment success", { tokenAddr, poolAddr });
+      alert("Token created successfully");
 
       setMode("claim");
-      setRemaining(TOTAL);
-      setClaimedCount(0);
+      await loadInfo(poolAddr);
       setClaimHistory([]);
     } catch (err) {
       console.error("Deploy failed", err);
+      alert(`Deploy failed: ${err?.message || err}`);
     }
   };
 
-  const doClaim = () => {
-    if (remaining <= 0) return;
-    const amount = Math.min(100, remaining);
-    const newRemaining = Math.max(0, remaining - amount);
-    const newClaimed = TOTAL - newRemaining;
-    setRemaining(newRemaining);
-    setClaimedCount((c) => c + 1);
-    setClaimHistory((h) => [...h, newClaimed]);
+  const doClaim = async () => {
+    if (!connected || !poolAddress) return;
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const pool = new ethers.Contract(poolAddress, CLAIMPOOL_ABI, signer);
+      const tx = await pool.claim();
+      await tx.wait();
+      const info = await loadInfo(poolAddress);
+      setClaimHistory((h) => [...h, info.claimedTotal]);
+    } catch (err) {
+      console.error("Claim failed", err);
+    }
   };
 
-  const claimedSoFar = Math.max(0, TOTAL - remaining);
+  const claimedSoFar = claimedTotal;
 
   const connectWallet = async () => {
     if (!window.ethereum) {
@@ -208,48 +339,51 @@ export default function MvpTokenApp() {
     <div className="min-h-screen bg-black text-white">
       <BackgroundFX />
 
-      {/* Topbar */}
-      <header className="sticky top-0 z-20 border-b border-white/10 bg-black/40 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-white/10 text-white shadow-inner">
-              <span className="text-sm font-bold">MVP</span>
-            </div>
-            <div className="text-lg font-semibold tracking-tight">Token Claim</div>
-          </div>
-          <div className="flex items-center gap-2">
-            {mode !== "home" && (
+      <header className="border-b border-white/10 bg-black/40 backdrop-blur">
+        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
+          <h1 className="text-lg font-semibold">Token Claim MVP</h1>
+          <div className="flex items-center gap-4">
+            {connected ? (
+              <span className="text-sm text-zinc-400">{account}</span>
+            ) : (
               <button
-                className={`rounded-xl bg-white px-3 py-2 text-sm font-medium text-black shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-white/30`}
-                onClick={!connected ? connectWallet : undefined}
+                onClick={connectWallet}
+                className="rounded-xl border border-emerald-400/40 bg-emerald-400/20 px-4 py-2 text-sm text-emerald-200 transition hover:bg-emerald-400/30 focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
               >
-                {connected && account ? `${account.slice(0, 6)}…${account.slice(-4)}` : "Connect wallet"}
+                Connect wallet
+              </button>
+            )}
+            {connected && (
+              <button
+                onClick={() => setMode("create")}
+                className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs text-zinc-200 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
+              >
+                + Create
               </button>
             )}
           </div>
         </div>
       </header>
 
-      {/* Landing: headline + two simple buttons (same style) */}
-      {mode === "home" && (
-        <section className="mx-auto max-w-6xl px-4 pb-16 pt-20">
-          <div className="mx-auto max-w-2xl text-center">
-            <h1 className="text-4xl font-semibold tracking-tight">What do you want to do?</h1>
-          </div>
-          <div className="mx-auto mt-10 grid max-w-3xl gap-6 md:grid-cols-2">
-            <CtaButton label="Create token" onClick={() => setMode("create")} />
-            <CtaButton label="Claim tokens" onClick={() => setMode("claim")} />
-          </div>
-        </section>
-      )}
+      <main ref={mainRef} className="mx-auto max-w-4xl px-4 py-12">
+        {mode === "home" && (
+          <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur">
+            <h2 className="mb-4 text-xl font-semibold">Welcome</h2>
+            <p className="text-sm text-zinc-300">
+              Create your own ERC‑20 token with a claim pool. Users can claim fixed rewards until the pool is empty.
+            </p>
+            {!connected && (
+              <div className="mt-6">
+                <CtaButton label="Connect wallet" onClick={connectWallet} />
+              </div>
+            )}
+          </section>
+        )}
 
-      {/* Focused sections */}
-      <main ref={mainRef} className="mx-auto max-w-6xl px-4 pb-16">
-        {/* CREATE VIEW ONLY */}
         {mode === "create" && (
           <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Create token</h2>
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Create your token</h2>
               <button
                 onClick={() => setMode("home")}
                 className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs text-zinc-200 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
@@ -258,26 +392,35 @@ export default function MvpTokenApp() {
               </button>
             </div>
 
-            <div className="grid gap-4">
-              <div>
-                <label className="mb-1 block text-sm text-zinc-300">Name *</label>
-                <input
-                  className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none placeholder:text-zinc-500 focus:ring-2 focus:ring-emerald-400/30"
-                  placeholder="e.g. WalkCoin"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm text-zinc-300">Symbol *</label>
-                <input
-                  className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 uppercase text-white outline-none placeholder:text-zinc-500 focus:ring-2 focus:ring-emerald-400/30"
-                  placeholder="e.g. WLK"
-                  value={symbol}
-                  onChange={(e) => setSymbol(e.target.value.slice(0, 11))}
-                />
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-6">
+                <div>
+                  <label className="mb-1 block text-sm text-zinc-300">Factory address *</label>
+                  <input
+                    className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none placeholder:text-zinc-500 focus:ring-2 focus:ring-emerald-400/30"
+                    placeholder="0x..."
+                    value={factoryAddress}
+                    onChange={(e) => setFactoryAddress(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm text-zinc-300">Token name *</label>
+                  <input
+                    className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none placeholder:text-zinc-500 focus:ring-2 focus:ring-emerald-400/30"
+                    placeholder="My Token"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm text-zinc-300">Symbol *</label>
+                  <input
+                    className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none placeholder:text-zinc-500 focus:ring-2 focus:ring-emerald-400/30"
+                    placeholder="TKN"
+                    value={symbol}
+                    onChange={(e) => setSymbol(e.target.value)}
+                  />
+                </div>
                 <div>
                   <label className="mb-1 block text-sm text-zinc-300">Author *</label>
                   <input
@@ -309,13 +452,13 @@ export default function MvpTokenApp() {
 
             {/* Claimed summary + simple chart (creator view) */}
             <div className="mt-8 grid gap-4 md:grid-cols-3">
-              <Stat label="Claimed by others" value={claimedSoFar.toLocaleString()} hint={`out of ${TOTAL.toLocaleString()}`} />
+              <Stat label="Claimed by others" value={claimedSoFar.toLocaleString()} hint={`out of ${totalSupply.toLocaleString()}`} />
               <Stat label="Claim count" value={claimedCount.toLocaleString()} />
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                 <div className="text-sm text-zinc-300">Claim activity</div>
                 <div className="mt-2">
                   {claimHistory.length > 0 ? (
-                    <SimpleSparkline data={claimHistory} max={TOTAL} />
+                    <SimpleSparkline data={claimHistory} max={totalSupply} />
                   ) : (
                     <div className="text-xs text-zinc-400">No claims yet</div>
                   )}
@@ -324,8 +467,8 @@ export default function MvpTokenApp() {
             </div>
 
             <div className="mt-6 flex items-center justify-between">
-              <div className="text-xs text-zinc-400">Supply: 1,000,000 • Claim reward: 100</div>
-              <CtaButton label="Create token" onClick={doCreate} disabled={!connected || !formValid} />
+              <div className="text-xs text-zinc-400">Supply: {totalSupply.toLocaleString()} • Claim reward: {claimAmount.toLocaleString()}</div>
+              <CtaButton label="Create token" onClick={doCreate} disabled={!connected || !formValid || !factoryAddress} />
             </div>
 
             {!connected && (
@@ -334,7 +477,6 @@ export default function MvpTokenApp() {
           </section>
         )}
 
-        {/* CLAIM VIEW ONLY */}
         {mode === "claim" && (
           <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur">
             <div className="mb-4 flex items-center justify-between">
@@ -349,45 +491,55 @@ export default function MvpTokenApp() {
 
             <div className="flex items-start gap-4">
               {/* Logo render */}
-              <div className="mt-1 flex h-14 w-14 items:center justify-center rounded-2xl border border-white/10 bg-white/5 shadow-sm">
-                {sampleToken.logoId === 0 && (
+              <div className="mt-1 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5 shadow-sm">
+                {displayToken.logoId === 0 && (
                   <div className="h-8 w-8 rounded-full bg-gradient-to-br from-zinc-300 to-zinc-500" />
                 )}
-                {sampleToken.logoId === 1 && (
+                {displayToken.logoId === 1 && (
                   <div className="h-8 w-8 rotate-45 rounded-lg bg-gradient-to-br from-zinc-400 to-zinc-700" />
                 )}
-                {sampleToken.logoId === 2 && (
+                {displayToken.logoId === 2 && (
                   <div className="h-8 w-8 bg-[conic-gradient(at_50%_50%,#a1a1aa,#52525b,#a1a1aa)] rounded-full" />
                 )}
               </div>
 
               <div className="flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-lg font-semibold">{sampleToken.name}</h3>
+                  <h3 className="text-lg font-semibold">{displayToken.name}</h3>
                   <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-zinc-200">
-                    {sampleToken.symbol}
+                    {displayToken.symbol}
                   </span>
                 </div>
-                <div className="mt-1 text-sm text-zinc-300">{sampleToken.description}</div>
-                <div className="mt-2 text-xs text-zinc-400">Author: {sampleToken.author}</div>
+                <div className="mt-1 text-sm text-zinc-300">{displayToken.description}</div>
+                <div className="mt-2 text-xs text-zinc-400">Author: {displayToken.author}</div>
               </div>
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-3">
-              <Stat label="Remaining pool" value={remaining.toLocaleString()} hint="out of 1,000,000" />
-              <Stat label="Claim per tx" value="100" />
+              <Stat label="Remaining pool" value={remaining.toLocaleString()} hint={`out of ${totalSupply.toLocaleString()}`} />
+              <Stat label="Claim per tx" value={claimAmount.toLocaleString()} />
               <Stat label="Claim count" value={claimedCount.toLocaleString()} />
             </div>
 
             <div className="mt-6">
-              <Progress total={TOTAL} remaining={remaining} />
+              <Progress total={totalSupply} remaining={remaining} />
             </div>
 
             <div className="mt-6 flex items-center justify-between">
               <div className="text-xs text-zinc-400">
-                {tokenAddress ? `Token contract: ${tokenAddress}` : "Contract address will appear after deployment"}
+                {tokenAddress ? `Token: ${tokenAddress} • Pool: ${poolAddress}` : "Contract address will appear after deployment"}
               </div>
-              <CtaButton label={remaining > 0 ? (remaining >= 100 ? "Claim 100" : `Claim ${remaining}`) : "Pool empty"} onClick={doClaim} disabled={!connected || remaining === 0} />
+              <CtaButton
+                label={
+                  remaining > 0
+                    ? remaining >= claimAmount
+                      ? `Claim ${claimAmount}`
+                      : `Claim ${remaining}`
+                    : "Pool empty"
+                }
+                onClick={doClaim}
+                disabled={!connected || remaining === 0}
+              />
             </div>
 
             {!connected && (
@@ -403,3 +555,4 @@ export default function MvpTokenApp() {
     </div>
   );
 }
+
