@@ -101,6 +101,7 @@ function SimpleSparkline({ data, max = 1_000_000, height = 56 }) {
 function CtaButton({ label, onClick, disabled = false }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={disabled}
       className={`relative isolate w-full rounded-2xl px-6 py-5 text-center font-medium text-white transition ${
