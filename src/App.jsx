@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
+import { ethers } from "ethers";
 
 // MVP single-file UI mock (no blockchain wired yet)
 // Tailwind only. Dark theme, simple modern buttons.
@@ -128,6 +129,7 @@ export default function MvpTokenApp() {
   const [author, setAuthor] = useState("");
   const [description, setDescription] = useState("");
   const [connected, setConnected] = useState(false);
+  const [account, setAccount] = useState(null);
   const mainRef = useRef(null);
 
   // mock token detail preview
@@ -155,6 +157,49 @@ export default function MvpTokenApp() {
     }
   }, [mode]);
 
+  // check wallet connection on load and listen for account changes
+  useEffect(() => {
+    if (!window.ethereum) return;
+
+    window.ethereum
+      .request({ method: "eth_accounts" })
+      .then((accounts) => {
+        if (accounts.length > 0) {
+          setAccount(accounts[0]);
+          setConnected(true);
+        }
+      })
+      .catch((err) => console.error(err));
+
+    const handleAccounts = (accounts) => {
+      if (accounts.length > 0) {
+        setAccount(accounts[0]);
+        setConnected(true);
+      } else {
+        setAccount(null);
+        setConnected(false);
+      }
+    };
+
+    window.ethereum.on("accountsChanged", handleAccounts);
+    return () => {
+      window.ethereum.removeListener("accountsChanged", handleAccounts);
+    };
+  }, []);
+
+  const connectWallet = async () => {
+    if (!window.ethereum) return;
+    try {
+      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+      if (accounts.length > 0) {
+        setAccount(accounts[0]);
+        setConnected(true);
+      }
+    } catch (err) {
+      console.error("Wallet connection failed", err);
+    }
+  };
+
   const doCreate = () => {
     // purely visual for the MVP design preview
     setMode("claim");
@@ -163,14 +208,27 @@ export default function MvpTokenApp() {
     setClaimHistory([]);
   };
 
-  const doClaim = () => {
-    if (remaining <= 0) return;
-    const amount = Math.min(100, remaining);
-    const newRemaining = Math.max(0, remaining - amount);
-    const newClaimed = TOTAL - newRemaining;
-    setRemaining(newRemaining);
-    setClaimedCount((c) => c + 1);
-    setClaimHistory((h) => [...h, newClaimed]);
+  const CLAIM_CONTRACT_ADDRESS = "0xYourClaimContractAddress"; // replace with your deployed contract
+  const CLAIM_ABI = ["function claim(address to)"];
+
+  const doClaim = async () => {
+    if (remaining <= 0 || !connected) return;
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(CLAIM_CONTRACT_ADDRESS, CLAIM_ABI, signer);
+      const tx = await contract.claim(account);
+      await tx.wait();
+
+      const amount = Math.min(100, remaining);
+      const newRemaining = Math.max(0, remaining - amount);
+      const newClaimed = TOTAL - newRemaining;
+      setRemaining(newRemaining);
+      setClaimedCount((c) => c + 1);
+      setClaimHistory((h) => [...h, newClaimed]);
+    } catch (err) {
+      console.error("Claim failed", err);
+    }
   };
 
   const claimedSoFar = Math.max(0, TOTAL - remaining);
@@ -192,9 +250,9 @@ export default function MvpTokenApp() {
             {mode !== "home" && (
               <button
                 className={`rounded-xl bg-white px-3 py-2 text-sm font-medium text-black shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-white/30`}
-                onClick={() => setConnected((c) => !c)}
+                onClick={connectWallet}
               >
-                {connected ? "Wallet connected" : "Connect wallet"}
+                {connected ? `${account?.slice(0, 6)}...${account?.slice(-4)}` : "Connect wallet"}
               </button>
             )}
           </div>
