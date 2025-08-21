@@ -3,6 +3,8 @@ import { ethers } from "ethers";
 
 const FACTORY_ADDRESS = import.meta.env.VITE_FACTORY_ADDRESS;
 
+// ABI for the factory contract; the createAll signature must remain on one
+// line so ethers can parse it correctly.
 const FACTORY_ABI = [
   "event Created(address indexed creator, address token, address pool)",
   "function createAll(string name_, string symbol_, string author_, string description_, string logoURI_) returns (address tokenAddr, address poolAddr)",
@@ -176,7 +178,8 @@ export default function MvpTokenApp() {
 
   const [factoryAddress, setFactoryAddress] = useState(FACTORY_ADDRESS || "");
 
-  const formValid = name.trim() && symbol.trim() && author.trim() && description.trim();
+  // Ensure form validation returns a boolean
+  const formValid = Boolean(name.trim() && symbol.trim() && author.trim() && description.trim());
 
   const sampleToken = useMemo(
     () => ({
@@ -239,7 +242,20 @@ export default function MvpTokenApp() {
   };
 
   const doCreate = async () => {
-    if (!connected) return;
+    console.log("Create button clicked", {
+      connected,
+      factoryAddress,
+      formValid,
+      name,
+      symbol,
+      author,
+      description,
+      logoId,
+    });
+    if (!connected) {
+      console.warn("Wallet not connected");
+      return;
+    }
     if (!factoryAddress) {
       alert("Factory address not set");
       return;
@@ -249,6 +265,7 @@ export default function MvpTokenApp() {
       const signer = await provider.getSigner();
       const factory = new ethers.Contract(factoryAddress, FACTORY_ABI, signer);
       const logos = ["logoA", "logoB", "logoC"];
+      console.log("Calling createAll on factory", factoryAddress);
       const tx = await factory.createAll(
         name || "Token",
         symbol || "TKN",
@@ -256,7 +273,9 @@ export default function MvpTokenApp() {
         description || "",
         logos[logoId] || ""
       );
+      console.log("Transaction sent", tx.hash);
       const receipt = await tx.wait();
+      console.log("Transaction confirmed", receipt);
 
       let tokenAddr = null;
       let poolAddr = null;
@@ -268,15 +287,20 @@ export default function MvpTokenApp() {
             poolAddr = parsed.args.pool;
             break;
           }
-        } catch (err) {}
+        } catch (err) {
+          // ignore parse errors for unrelated logs
+        }
       }
       if (!tokenAddr || !poolAddr) throw new Error("Created event not found");
+      console.log("Deployment success", { tokenAddr, poolAddr });
+      alert("Token created successfully");
 
       setMode("claim");
       await loadInfo(poolAddr);
       setClaimHistory([]);
     } catch (err) {
       console.error("Deploy failed", err);
+      alert(`Deploy failed: ${err?.message || err}`);
     }
   };
 
