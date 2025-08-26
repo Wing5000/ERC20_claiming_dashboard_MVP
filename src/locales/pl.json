@@ -1,0 +1,15 @@
+{
+  "connect_wallet": "Połącz portfel",
+  "wrong_network": "Zła sieć",
+  "switch_network": "Przełącz sieć",
+  "no_wallet": "Zainstaluj portfel",
+  "claim": "Odbierz",
+  "claimed": "Odebrano",
+  "errors": {
+    "user_denied": "Użytkownik odrzucił żądanie",
+    "rejected_tx": "Transakcja odrzucona",
+    "insufficient_gas": "Niewystarczające saldo na gaz",
+    "rpc_timeout": "Przekroczono czas RPC",
+    "unknown": "Nieznany błąd"
+  }
+}

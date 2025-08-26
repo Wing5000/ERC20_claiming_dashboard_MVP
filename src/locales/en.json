@@ -1,0 +1,15 @@
+{
+  "connect_wallet": "Connect wallet",
+  "wrong_network": "Wrong network",
+  "switch_network": "Switch network",
+  "no_wallet": "Install wallet",
+  "claim": "Claim",
+  "claimed": "Claimed",
+  "errors": {
+    "user_denied": "User denied request",
+    "rejected_tx": "Transaction rejected",
+    "insufficient_gas": "Insufficient gas balance",
+    "rpc_timeout": "RPC timeout",
+    "unknown": "Unexpected error"
+  }
+}
