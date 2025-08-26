@@ -1,6 +1,11 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { ethers } from "ethers";
 import ClaimableToken from "./ClaimableToken.json";
+import useWallet from "./hooks/useWallet";
+import useToasts from "./hooks/useToasts";
+import ClaimButton from "./components/ClaimButton";
+import InstallWallet from "./components/InstallWallet";
+import { useTranslation } from "react-i18next";
 
 // MVP single-file UI mock (no blockchain wired yet)
 // Tailwind only. Dark theme, simple modern buttons.
@@ -182,8 +187,16 @@ export default function MvpTokenApp() {
   const [symbol, setSymbol] = useState("");
   const [author, setAuthor] = useState("");
   const [description, setDescription] = useState("");
-  const [connected, setConnected] = useState(false);
-  const [account, setAccount] = useState(null);
+  const { t, i18n } = useTranslation();
+  const {
+    account,
+    connectWallet,
+    chainId,
+    wrongNetwork,
+    switchNetwork,
+  } = useWallet();
+  const { showError, showSuccess } = useToasts();
+  const connected = !!account;
   const [tokenAddress, setTokenAddress] = useState(null);
   const [history, setHistory] = useState([]);
   const [historyStats, setHistoryStats] = useState({});
@@ -194,6 +207,7 @@ export default function MvpTokenApp() {
   const [remaining, setRemaining] = useState(1_000_000);
   const [claimedCount, setClaimedCount] = useState(0);
   const [claimHistory, setClaimHistory] = useState([]); // cumulative claimed values
+  const [claimStatus, setClaimStatus] = useState('idle');
 
   const formValid = name.trim() && symbol.trim() && author.trim() && description.trim();
 
@@ -270,7 +284,9 @@ export default function MvpTokenApp() {
   };
 
   const doClaim = async () => {
-    if (!connected || !tokenAddress) return;
+    if (!connected || !tokenAddress || wrongNetwork) return;
+    setClaimStatus('loading');
+    trackEvent('claim_start', { account, tokenAddress });
     try {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
@@ -287,8 +303,13 @@ export default function MvpTokenApp() {
       setRemaining(remainingTokens);
       setClaimedCount(Number(count));
       setClaimHistory((h) => [...h, TOTAL - remainingTokens]);
+      setClaimStatus('success');
+      showSuccess('claimed');
+      trackEvent('claim_success', { account, tokenAddress });
     } catch (err) {
-      console.error("Claim failed", err);
+      setClaimStatus('idle');
+      trackEvent('claim_fail', { code: err.code });
+      showError(err.code || 'unknown');
     }
   };
 
@@ -362,20 +383,6 @@ export default function MvpTokenApp() {
 
   const claimedSoFar = Math.max(0, TOTAL - remaining);
 
-  const connectWallet = async () => {
-    if (!window.ethereum) {
-      alert("Wallet not found");
-      return;
-    }
-    try {
-      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-      setConnected(true);
-      setAccount(accounts[0]);
-    } catch (err) {
-      console.error("Wallet connection failed", err);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-black text-white">
       <BackgroundFX />
@@ -395,12 +402,27 @@ export default function MvpTokenApp() {
                 className={`rounded-xl bg-white px-3 py-2 text-sm font-medium text-black shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-white/30`}
                 onClick={!connected ? connectWallet : undefined}
               >
-                {connected && account ? `${account.slice(0, 6)}…${account.slice(-4)}` : "Connect wallet"}
+                {connected && account ? `${account.slice(0, 6)}…${account.slice(-4)}` : t('connect_wallet')}
               </button>
             )}
           </div>
         </div>
       </header>
+
+      {wrongNetwork && (
+        <div className="bg-red-600 text-white text-sm p-2 text-center">
+          {t('wrong_network')} {" "}
+          <button onClick={switchNetwork} className="underline">
+            {t('switch_network')}
+          </button>
+        </div>
+      )}
+
+      {!window.ethereum && !connected && (
+        <div className="mx-auto max-w-md p-4">
+          <InstallWallet />
+        </div>
+      )}
 
       {/* Landing: headline + two simple buttons (same style) */}
       {mode === "home" && (
@@ -557,10 +579,35 @@ export default function MvpTokenApp() {
             </div>
 
             <div className="mt-6 flex items-center justify-between">
-              <div className="text-xs text-zinc-400">
-                {tokenAddress ? `Token contract: ${tokenAddress}` : "Contract address will appear after deployment"}
+              <div className="text-xs text-zinc-400 flex items-center gap-2">
+                {tokenAddress ? (
+                  <>
+                    <span>{shorten(tokenAddress)}</span>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(tokenAddress)}
+                      className="underline"
+                    >
+                      Copy
+                    </button>
+                    <a
+                      href={`https://etherscan.io/address/${tokenAddress}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline"
+                    >
+                      Explorer
+                    </a>
+                  </>
+                ) : (
+                  <span>Contract address will appear after deployment</span>
+                )}
               </div>
-              <CtaButton label={remaining > 0 ? (remaining >= 100 ? "Claim 100" : `Claim ${remaining}`) : "Pool empty"} onClick={doClaim} disabled={!connected || remaining === 0} />
+              <ClaimButton
+                status={claimStatus}
+                label={remaining > 0 ? t('claim') : t('claimed')}
+                onClick={doClaim}
+                disabled={!connected || remaining === 0 || wrongNetwork}
+              />
             </div>
 
             {!connected && (
