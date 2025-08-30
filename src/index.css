@@ -3,8 +3,14 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light dark;
 }
+
 body {
-  @apply text-white bg-black;
+  @apply bg-background-light text-text-light dark:bg-background-dark dark:text-text-dark;
+}
+
+/* focus styles */
+*:focus-visible {
+  @apply outline-none ring-2 ring-secondary;
 }
