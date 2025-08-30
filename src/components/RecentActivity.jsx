@@ -1,8 +1,6 @@
 import React from "react";
-
-function shorten(addr) {
-  return addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : "";
-}
+import AddressBadge from "./AddressBadge.jsx";
+import CopyButton from "./CopyButton.jsx";
 
 function relativeTime(ts) {
   const diff = Math.floor((Date.now() - ts) / 1000);
@@ -28,7 +26,10 @@ export default function RecentActivity({ claims = [] }) {
             key={idx}
             className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2"
           >
-            <span className="font-mono">{shorten(tx.address)}</span>
+            <div className="flex items-center gap-2">
+              <AddressBadge address={tx.address} />
+              <CopyButton value={tx.address} />
+            </div>
             <span>{tx.amount}</span>
             <span className="text-xs text-zinc-400">{relativeTime(tx.time)}</span>
           </li>
