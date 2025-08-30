@@ -12,10 +12,17 @@ export default function CtaButton({ label, onClick, disabled = false, state = "i
   };
 
   const bgColors = {
-    idle: "bg-[#0d1110]",
-    loading: "bg-[#0d1110]",
+    idle: "bg-[#f0f0f0] dark:bg-[#0d1110]",
+    loading: "bg-[#f0f0f0] dark:bg-[#0d1110]",
     success: "bg-emerald-600",
     error: "bg-rose-600",
+  };
+
+  const textColors = {
+    idle: "text-black dark:text-white",
+    loading: "text-black dark:text-white",
+    success: "text-white",
+    error: "text-white",
   };
 
   return (
@@ -23,7 +30,7 @@ export default function CtaButton({ label, onClick, disabled = false, state = "i
       type="button"
       onClick={onClick}
       disabled={disabled || isLoading}
-      className={`relative isolate w-full rounded-2xl px-6 py-5 text-center font-medium text-white transition ${
+      className={`relative isolate w-full rounded-2xl px-6 py-5 text-center font-medium transition ${textColors[state]} ${
         disabled || isLoading ? "opacity-60 cursor-not-allowed" : "hover:-translate-y-0.5 active:translate-y-0"
       } focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/40`}
       aria-label={label}

@@ -18,7 +18,7 @@ export default function NetworkBadge({ chainId }) {
     ? LABELS[Number(chainId)] || `Chain ${chainId}`
     : "No network";
   return (
-    <span className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs text-zinc-200">
+    <span className="rounded-xl border border-black/10 bg-black/10 px-3 py-1.5 text-xs text-zinc-700 dark:border-white/10 dark:bg-white/10 dark:text-zinc-200">
       {label}
     </span>
   );
