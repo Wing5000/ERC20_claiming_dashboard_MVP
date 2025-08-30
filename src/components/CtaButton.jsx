@@ -26,6 +26,9 @@ export default function CtaButton({ label, onClick, disabled = false, state = "i
       className={`relative isolate w-full rounded-2xl px-6 py-5 text-center font-medium text-white transition ${
         disabled || isLoading ? "opacity-60 cursor-not-allowed" : "hover:-translate-y-0.5 active:translate-y-0"
       } focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/40`}
+      aria-label={label}
+      role="button"
+      tabIndex={0}
     >
       <span
         className={`absolute inset-0 -z-10 rounded-2xl ${bgColors[state]} shadow-[0_12px_24px_rgba(16,185,129,0.12)]`}

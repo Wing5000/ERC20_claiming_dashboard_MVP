@@ -35,9 +35,11 @@ function LogoSwatch({ id, selected, onSelect, label, className = "" }) {
       onClick={() => onSelect(id)}
       className={`group relative flex h-16 w-16 items-center justify-center rounded-2xl border transition-all ${
         selected ? "border-emerald-400 ring-4 ring-emerald-400/20" : "border-white/15 hover:border-white/30"
-      } ${className}`}
+      } focus:outline-none focus:ring-2 focus:ring-white/30 ${className}`}
       aria-pressed={selected}
       aria-label={`Select logo ${label}`}
+      role="button"
+      tabIndex={0}
     >
       {/* Simple geometric logo mock */}
       <div className="pointer-events-none select-none">
@@ -136,12 +138,15 @@ function HistoryItem({ item, stats, onRefresh }) {
           </div>
           <div className="mt-1 text-xs text-zinc-400">{relativeTime(item.createdAt)}</div>
         </div>
-        <button
-          onClick={onRefresh}
-          className="rounded-xl border border-white/10 bg-white/10 px-3 py-1 text-xs text-zinc-200 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
-        >
-          Refresh
-        </button>
+          <button
+            onClick={onRefresh}
+            className="rounded-xl border border-white/10 bg-white/10 px-3 py-1 text-xs text-zinc-200 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
+            aria-label="Refresh"
+            role="button"
+            tabIndex={0}
+          >
+            Refresh
+          </button>
       </div>
       {!stats || stats.loading ? (
         <div className="mt-4 flex flex-col items-center gap-4">
@@ -419,6 +424,9 @@ export default function MvpTokenApp() {
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs text-zinc-200 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
+              aria-label="Toggle theme"
+              role="button"
+              tabIndex={0}
             >
               {theme === "dark" ? "Light" : "Dark"} mode
             </button>
@@ -428,6 +436,13 @@ export default function MvpTokenApp() {
                 <button
                   className={`rounded-xl bg-white px-3 py-2 text-sm font-medium text-black shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-white/30`}
                   onClick={!connected ? connectWallet : undefined}
+                  aria-label={
+                    connected && account
+                      ? `Connected wallet ${account.slice(0, 6)}…${account.slice(-4)}`
+                      : "Connect wallet"
+                  }
+                  role="button"
+                  tabIndex={0}
                 >
                   {connected && account ? `${account.slice(0, 6)}…${account.slice(-4)}` : "Connect wallet"}
                 </button>
@@ -443,7 +458,7 @@ export default function MvpTokenApp() {
           <div className="mx-auto max-w-2xl text-center">
             <h1 className="text-4xl font-semibold tracking-tight">What do you want to do?</h1>
           </div>
-          <div className="mx-auto mt-10 grid max-w-4xl gap-6 md:grid-cols-3">
+          <div className="mx-auto mt-10 grid max-w-4xl gap-6 sm:grid-cols-2 md:grid-cols-3">
             <CtaButton label="Create token" onClick={() => setMode("create")} />
             <CtaButton label="Claim tokens" onClick={() => setMode("claim")} />
             <CtaButton label="History" onClick={() => setMode("history")} />
@@ -461,6 +476,9 @@ export default function MvpTokenApp() {
               <button
                 onClick={() => setMode("home")}
                 className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs text-zinc-200 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
+                aria-label="Back to home"
+                role="button"
+                tabIndex={0}
               >
                 ← Back
               </button>
@@ -485,7 +503,7 @@ export default function MvpTokenApp() {
                   onChange={(e) => setSymbol(e.target.value.slice(0, 11))}
                 />
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm text-zinc-300">Author *</label>
                   <input
@@ -516,7 +534,7 @@ export default function MvpTokenApp() {
             </div>
 
             {/* Claimed summary + simple chart (creator view) */}
-            <div className="mt-8 grid gap-4 md:grid-cols-3">
+            <div className="mt-8 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
               <Stat label="Claimed by others" value={claimedSoFar.toLocaleString()} hint={`out of ${TOTAL.toLocaleString()}`} />
               <Stat label="Claim count" value={claimedCount.toLocaleString()} />
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -550,6 +568,9 @@ export default function MvpTokenApp() {
               <button
                 onClick={() => setMode("home")}
                 className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs text-zinc-200 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
+                aria-label="Back to home"
+                role="button"
+                tabIndex={0}
               >
                 ← Back
               </button>
@@ -568,7 +589,7 @@ export default function MvpTokenApp() {
               eligibleAmount={eligibleAmount}
             />
 
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
               {tokenAddress ? (
                 <>
                   <Stat label="Remaining pool" value={remaining.toLocaleString()} hint="out of 1,000,000" />
@@ -632,12 +653,18 @@ export default function MvpTokenApp() {
                 <button
                   onClick={clearHistory}
                   className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs text-zinc-200 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
+                  aria-label="Clear history"
+                  role="button"
+                  tabIndex={0}
                 >
                   Clear history
                 </button>
                 <button
                   onClick={() => setMode("home")}
                   className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs text-zinc-200 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
+                  aria-label="Back to home"
+                  role="button"
+                  tabIndex={0}
                 >
                   ← Back
                 </button>
@@ -646,7 +673,7 @@ export default function MvpTokenApp() {
             {history.length === 0 ? (
               <div className="text-sm text-zinc-400">No history.</div>
             ) : (
-              <div className="grid gap-4">
+              <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
                 {history.map((item) => (
                   <HistoryItem
                     key={`${item.token}-${item.pool}-${item.createdAt}`}
