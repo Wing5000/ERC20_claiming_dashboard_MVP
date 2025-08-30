@@ -188,6 +188,7 @@ export default function MvpTokenApp() {
   const [history, setHistory] = useState([]);
   const [historyStats, setHistoryStats] = useState({});
   const mainRef = useRef(null);
+  const [theme, setTheme] = useState("light");
 
   // mock token detail preview
   const TOTAL = 1_000_000;
@@ -218,6 +219,12 @@ export default function MvpTokenApp() {
     const stored = JSON.parse(localStorage.getItem("tc.history") || "[]");
     setHistory(stored);
   }, []);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.remove("light", "dark");
+    root.classList.add(theme);
+  }, [theme]);
 
   const doCreate = async () => {
     if (!connected) return;
@@ -377,7 +384,7 @@ export default function MvpTokenApp() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-background text-foreground">
       <BackgroundFX />
 
       {/* Topbar */}
@@ -390,6 +397,12 @@ export default function MvpTokenApp() {
             <div className="text-lg font-semibold tracking-tight">Token Claim</div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs text-zinc-200 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
+            >
+              {theme === "dark" ? "Light" : "Dark"} mode
+            </button>
             {mode !== "home" && (
               <button
                 className={`rounded-xl bg-white px-3 py-2 text-sm font-medium text-black shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-white/30`}
