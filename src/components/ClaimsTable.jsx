@@ -7,10 +7,15 @@ function shorten(addr) {
 export default function ClaimsTable({ claims = [] }) {
   const [sortConfig, setSortConfig] = useState({ key: "time", direction: "desc" });
   const [page, setPage] = useState(1);
+  const [filter, setFilter] = useState("");
   const pageSize = 10;
 
   const sortedClaims = useMemo(() => {
-    const sorted = [...claims];
+    const lower = filter.toLowerCase();
+    const filtered = lower
+      ? claims.filter((c) => c.address.toLowerCase().includes(lower))
+      : claims;
+    const sorted = [...filtered];
     if (sortConfig.key) {
       sorted.sort((a, b) => {
         const aVal = a[sortConfig.key];
@@ -21,7 +26,7 @@ export default function ClaimsTable({ claims = [] }) {
       });
     }
     return sorted;
-  }, [claims, sortConfig]);
+  }, [claims, filter, sortConfig]);
 
   const totalPages = Math.max(1, Math.ceil(sortedClaims.length / pageSize));
   const pageData = sortedClaims.slice((page - 1) * pageSize, page * pageSize);
@@ -41,6 +46,16 @@ export default function ClaimsTable({ claims = [] }) {
 
   return (
     <div className="mt-6">
+      <input
+        type="text"
+        value={filter}
+        onChange={(e) => {
+          setFilter(e.target.value);
+          setPage(1);
+        }}
+        placeholder="Filter by address"
+        className="mb-2 w-full rounded border border-white/10 bg-white/10 px-2 py-1 text-sm text-zinc-200 placeholder-zinc-500"
+      />
       <table className="min-w-full text-sm">
         <thead>
           <tr className="text-left text-zinc-300">
