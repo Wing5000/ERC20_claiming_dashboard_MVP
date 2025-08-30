@@ -52,19 +52,68 @@ export default function ClaimsTable({ claims = [] }) {
           setPage(1);
         }}
         placeholder="Filter by address"
-        className="mb-2 w-full rounded border border-white/10 bg-white/10 px-2 py-1 text-sm text-zinc-200 placeholder-zinc-500"
+        aria-label="Filter by address"
+        className="mb-2 w-full rounded border border-white/10 bg-white/10 px-2 py-1 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-white/30"
       />
       <table className="min-w-full text-sm">
         <thead>
           <tr className="text-left text-zinc-300">
-            <th className="cursor-pointer px-2 py-1" onClick={() => requestSort("address")}>
-              Address {sortIndicator("address")}
+            <th
+              scope="col"
+              aria-sort={
+                sortConfig.key === "address"
+                  ? sortConfig.direction === "asc"
+                    ? "ascending"
+                    : "descending"
+                  : "none"
+              }
+              className="px-2 py-1"
+            >
+              <button
+                type="button"
+                onClick={() => requestSort("address")}
+                className="flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-white/30"
+              >
+                Address {sortIndicator("address")}
+              </button>
             </th>
-            <th className="cursor-pointer px-2 py-1" onClick={() => requestSort("amount")}>
-              Amount {sortIndicator("amount")}
+            <th
+              scope="col"
+              aria-sort={
+                sortConfig.key === "amount"
+                  ? sortConfig.direction === "asc"
+                    ? "ascending"
+                    : "descending"
+                  : "none"
+              }
+              className="px-2 py-1"
+            >
+              <button
+                type="button"
+                onClick={() => requestSort("amount")}
+                className="flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-white/30"
+              >
+                Amount {sortIndicator("amount")}
+              </button>
             </th>
-            <th className="cursor-pointer px-2 py-1" onClick={() => requestSort("time")}>
-              Time {sortIndicator("time")}
+            <th
+              scope="col"
+              aria-sort={
+                sortConfig.key === "time"
+                  ? sortConfig.direction === "asc"
+                    ? "ascending"
+                    : "descending"
+                  : "none"
+              }
+              className="px-2 py-1"
+            >
+              <button
+                type="button"
+                onClick={() => requestSort("time")}
+                className="flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-white/30"
+              >
+                Time {sortIndicator("time")}
+              </button>
             </th>
           </tr>
         </thead>
@@ -95,7 +144,7 @@ export default function ClaimsTable({ claims = [] }) {
         <button
           onClick={() => setPage((p) => Math.max(1, p - 1))}
           disabled={page === 1}
-          className="rounded border border-white/10 bg-white/10 px-3 py-1.5 disabled:opacity-50"
+          className="rounded border border-white/10 bg-white/10 px-3 py-1.5 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-white/30"
         >
           Previous
         </button>
@@ -105,7 +154,7 @@ export default function ClaimsTable({ claims = [] }) {
         <button
           onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
           disabled={page === totalPages}
-          className="rounded border border-white/10 bg-white/10 px-3 py-1.5 disabled:opacity-50"
+          className="rounded border border-white/10 bg-white/10 px-3 py-1.5 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-white/30"
         >
           Next
         </button>

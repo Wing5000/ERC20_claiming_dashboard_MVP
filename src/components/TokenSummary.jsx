@@ -42,7 +42,7 @@ export default function TokenSummary({ tokenAddress, name, symbol, progress = 0,
               href={`${explorerBase}/address/${tokenAddress}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-emerald-400 hover:underline"
+              className="text-emerald-400 hover:underline focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
             >
               Explorer
             </a>
