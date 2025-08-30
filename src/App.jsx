@@ -11,6 +11,8 @@ import SuccessModal from "./components/SuccessModal.jsx";
 import Skeleton from "./components/Skeleton.jsx";
 import Spinner from "./components/Spinner.jsx";
 import { toast } from "./components/ToastProvider.jsx";
+import RecentActivity from "./components/RecentActivity.jsx";
+import ClaimsTable from "./components/ClaimsTable.jsx";
 
 // MVP single-file UI mock (no blockchain wired yet)
 // Tailwind only. Dark theme, simple modern buttons.
@@ -195,6 +197,8 @@ export default function MvpTokenApp() {
   const [remaining, setRemaining] = useState(1_000_000);
   const [claimedCount, setClaimedCount] = useState(0);
   const [claimHistory, setClaimHistory] = useState([]); // cumulative claimed values
+  const [claims, setClaims] = useState([]);
+  const [claimTab, setClaimTab] = useState("summary");
   const [claimState, setClaimState] = useState("idle");
   const [txHash, setTxHash] = useState(null);
 
@@ -292,6 +296,8 @@ export default function MvpTokenApp() {
       const tx = await contract.claim();
       setTxHash(tx.hash);
       await tx.wait();
+      const addr = await signer.getAddress();
+      setClaims((c) => [...c, { address: addr, amount: eligibleAmount, time: Date.now() }]);
       const rem = await contract.remaining();
       const count = await contract.claimCount();
       const remainingTokens = Number(ethers.formatUnits(rem, 18));
@@ -576,74 +582,100 @@ export default function MvpTokenApp() {
                 ← Back
               </button>
             </div>
-
-            <TokenSummary
-              tokenAddress={tokenAddress}
-              name={sampleToken.name}
-              symbol={sampleToken.symbol}
-              progress={Math.round(((TOTAL - remaining) / TOTAL) * 100)}
-              chainId={chainId}
-            />
-
-            <EligibilityInfo
-              status={remaining > 0 ? "eligible" : "not eligible"}
-              eligibleAmount={eligibleAmount}
-            />
-
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-              {tokenAddress ? (
-                <>
-                  <Stat label="Remaining pool" value={remaining.toLocaleString()} hint="out of 1,000,000" />
-                  <Stat label="Claim per tx" value="100" />
-                  <Stat label="Claim count" value={claimedCount.toLocaleString()} />
-                </>
-              ) : (
-                <>
-                  <Skeleton className="h-24 w-full rounded-2xl" />
-                  <Skeleton className="h-24 w-full rounded-2xl" />
-                  <Skeleton className="h-24 w-full rounded-2xl" />
-                </>
-              )}
+            <div className="mb-4 flex gap-4 border-b border-white/10">
+              <button
+                onClick={() => setClaimTab("summary")}
+                className={`pb-2 text-sm ${
+                  claimTab === "summary" ? "border-b-2 border-emerald-400 text-white" : "text-zinc-400"
+                }`}
+              >
+                Summary
+              </button>
+              <button
+                onClick={() => setClaimTab("table")}
+                className={`pb-2 text-sm ${
+                  claimTab === "table" ? "border-b-2 border-emerald-400 text-white" : "text-zinc-400"
+                }`}
+              >
+                Claims
+              </button>
             </div>
 
-            <div className="mt-6">
-              {tokenAddress ? (
-                <Progress total={TOTAL} remaining={remaining} />
-              ) : (
-                <Skeleton className="h-6 w-full rounded-full" />
-              )}
-            </div>
-
-            <div className="mt-6 flex items-center justify-between">
-              <div className="text-xs text-zinc-400">
-                {tokenAddress ? (
-                  `Token contract: ${tokenAddress}`
-                ) : (
-                  <Skeleton className="h-4 w-40" />
-                )}
-              </div>
-              <div className="text-right">
-                <CtaButton
-                  label={
-                    claimState === "success"
-                      ? "Claimed!"
-                      : claimState === "error"
-                      ? "Failed"
-                      : remaining > 0
-                      ? `Claim ${eligibleAmount}`
-                      : "Pool empty"
-                  }
-                  onClick={doClaim}
-                  disabled={!connected || remaining === 0}
-                  state={claimState}
+            {claimTab === "summary" && (
+              <>
+                <TokenSummary
+                  tokenAddress={tokenAddress}
+                  name={sampleToken.name}
+                  symbol={sampleToken.symbol}
+                  progress={Math.round(((TOTAL - remaining) / TOTAL) * 100)}
+                  chainId={chainId}
                 />
-                <FeeHint text="~0.001 ETH" />
-              </div>
-            </div>
 
-            {!connected && (
-              <div className="mt-3 text-xs text-amber-300">Connect your wallet to claim tokens.</div>
+                <EligibilityInfo
+                  status={remaining > 0 ? "eligible" : "not eligible"}
+                  eligibleAmount={eligibleAmount}
+                />
+
+                <div className="mt-6 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+                  {tokenAddress ? (
+                    <>
+                      <Stat label="Remaining pool" value={remaining.toLocaleString()} hint="out of 1,000,000" />
+                      <Stat label="Claim per tx" value="100" />
+                      <Stat label="Claim count" value={claimedCount.toLocaleString()} />
+                    </>
+                  ) : (
+                    <>
+                      <Skeleton className="h-24 w-full rounded-2xl" />
+                      <Skeleton className="h-24 w-full rounded-2xl" />
+                      <Skeleton className="h-24 w-full rounded-2xl" />
+                    </>
+                  )}
+                </div>
+
+                <div className="mt-6">
+                  {tokenAddress ? (
+                    <Progress total={TOTAL} remaining={remaining} />
+                  ) : (
+                    <Skeleton className="h-6 w-full rounded-full" />
+                  )}
+                </div>
+
+                <RecentActivity claims={claims} />
+
+                <div className="mt-6 flex items-center justify-between">
+                  <div className="text-xs text-zinc-400">
+                    {tokenAddress ? (
+                      `Token contract: ${tokenAddress}`
+                    ) : (
+                      <Skeleton className="h-4 w-40" />
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <CtaButton
+                      label={
+                        claimState === "success"
+                          ? "Claimed!"
+                          : claimState === "error"
+                          ? "Failed"
+                          : remaining > 0
+                          ? `Claim ${eligibleAmount}`
+                          : "Pool empty"
+                      }
+                      onClick={doClaim}
+                      disabled={!connected || remaining === 0}
+                      state={claimState}
+                    />
+                    <FeeHint text="~0.001 ETH" />
+                  </div>
+                </div>
+
+                {!connected && (
+                  <div className="mt-3 text-xs text-amber-300">Connect your wallet to claim tokens.</div>
+                )}
+              </>
             )}
+
+            {claimTab === "table" && <ClaimsTable claims={claims} />}
           </section>
         )}
         {mode === "history" && (
