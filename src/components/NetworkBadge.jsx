@@ -14,8 +14,9 @@ const LABELS = {
 };
 
 export default function NetworkBadge({ chainId }) {
-  if (!chainId) return null;
-  const label = LABELS[Number(chainId)] || `Chain ${chainId}`;
+  const label = chainId
+    ? LABELS[Number(chainId)] || `Chain ${chainId}`
+    : "No network";
   return (
     <span className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs text-zinc-200">
       {label}
