@@ -2,7 +2,6 @@ import React, { useMemo, useState, useEffect } from "react";
 import { ethers } from "ethers";
 import ClaimableToken from "./ClaimableToken.json";
 import NetworkBadge from "./components/NetworkBadge.jsx";
-import AddressBadge from "./components/AddressBadge.jsx";
 import TokenSummary from "./components/TokenSummary.jsx";
 import EligibilityInfo from "./components/EligibilityInfo.jsx";
 import CtaButton from "./components/CtaButton.jsx";
@@ -454,6 +453,16 @@ export default function MvpTokenApp() {
             <div className="text-lg font-semibold tracking-tight">Token Claim</div>
           </div>
           <div className="flex items-center gap-2">
+            <NetworkBadge chainId={chainId} />
+            <button
+              className={`rounded-xl bg-white px-3 py-2 text-sm font-medium text-black shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-white/30`}
+              onClick={connectWallet}
+              aria-label="Connect wallet"
+              role="button"
+              tabIndex={0}
+            >
+              {connected && account ? shorten(account) : "Connect wallet"}
+            </button>
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs text-zinc-200 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
@@ -463,20 +472,6 @@ export default function MvpTokenApp() {
             >
               {theme === "dark" ? "Light" : "Dark"} mode
             </button>
-            {connected && chainId && <NetworkBadge chainId={chainId} />}
-            {connected && account ? (
-              <AddressBadge address={account} chainId={chainId} />
-            ) : (
-              <button
-                className={`rounded-xl bg-white px-3 py-2 text-sm font-medium text-black shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-white/30`}
-                onClick={connectWallet}
-                aria-label="Connect wallet"
-                role="button"
-                tabIndex={0}
-              >
-                Connect wallet
-              </button>
-            )}
           </div>
         </div>
       </header>
