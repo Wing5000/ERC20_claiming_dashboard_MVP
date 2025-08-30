@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { ethers } from "ethers";
 import ClaimableToken from "./ClaimableToken.json";
 import NetworkBadge from "./components/NetworkBadge.jsx";
@@ -177,7 +177,6 @@ function HistoryItem({ item, stats, onRefresh }) {
 
 export default function MvpTokenApp() {
   // --- UI state (mock only) ---
-  const [mode, setMode] = useState("home"); // home | create | claim | history
   const [logoId, setLogoId] = useState(0);
   const [name, setName] = useState("");
   const [symbol, setSymbol] = useState("");
@@ -189,7 +188,6 @@ export default function MvpTokenApp() {
   const [tokenAddress, setTokenAddress] = useState(null);
   const [history, setHistory] = useState([]);
   const [historyStats, setHistoryStats] = useState({});
-  const mainRef = useRef(null);
   const [theme, setTheme] = useState("light");
 
   // mock token detail preview
@@ -214,12 +212,6 @@ export default function MvpTokenApp() {
     }),
     [name, symbol, author, description, logoId]
   );
-
-  useEffect(() => {
-    if (mode !== "home" && mainRef.current) {
-      mainRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [mode]);
 
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("tc.history") || "[]");
@@ -276,7 +268,6 @@ export default function MvpTokenApp() {
       stored.unshift(entry);
       localStorage.setItem("tc.history", JSON.stringify(stored));
       setHistory(stored);
-      setMode("claim");
     } catch (err) {
       console.error("Deploy failed", err);
     }
@@ -382,10 +373,8 @@ export default function MvpTokenApp() {
   };
 
   useEffect(() => {
-    if (mode === "history") {
-      history.forEach((h) => refreshEntry(h));
-    }
-  }, [mode, history]);
+    history.forEach((h) => refreshEntry(h));
+  }, [history]);
 
   useEffect(() => {
     if (!window.ethereum) return;
@@ -420,7 +409,7 @@ export default function MvpTokenApp() {
 
       {/* Topbar */}
       <header className="sticky top-0 z-20 border-b border-white/10 bg-black/40 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-white/10 text-white shadow-inner">
               <span className="text-sm font-bold">MVP</span>
@@ -437,58 +426,28 @@ export default function MvpTokenApp() {
             >
               {theme === "dark" ? "Light" : "Dark"} mode
             </button>
-            {mode !== "home" && (
-              <>
-                {connected && chainId && <NetworkBadge chainId={chainId} />}
-                {connected && account ? (
-                  <AddressBadge address={account} chainId={chainId} />
-                ) : (
-                  <button
-                    className={`rounded-xl bg-white px-3 py-2 text-sm font-medium text-black shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-white/30`}
-                    onClick={connectWallet}
-                    aria-label="Connect wallet"
-                    role="button"
-                    tabIndex={0}
-                  >
-                    Connect wallet
-                  </button>
-                )}
-              </>
+            {connected && chainId && <NetworkBadge chainId={chainId} />}
+            {connected && account ? (
+              <AddressBadge address={account} chainId={chainId} />
+            ) : (
+              <button
+                className={`rounded-xl bg-white px-3 py-2 text-sm font-medium text-black shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-white/30`}
+                onClick={connectWallet}
+                aria-label="Connect wallet"
+                role="button"
+                tabIndex={0}
+              >
+                Connect wallet
+              </button>
             )}
           </div>
         </div>
       </header>
-
-      {/* Landing: headline + two simple buttons (same style) */}
-      {mode === "home" && (
-        <section className="mx-auto max-w-6xl px-4 pb-16 pt-20">
-          <div className="mx-auto max-w-2xl text-center">
-            <h1 className="text-4xl font-semibold tracking-tight">What do you want to do?</h1>
-          </div>
-          <div className="mx-auto mt-10 grid max-w-4xl gap-6 sm:grid-cols-2 md:grid-cols-3">
-            <CtaButton label="Create token" onClick={() => setMode("create")} />
-            <CtaButton label="Claim tokens" onClick={() => setMode("claim")} />
-            <CtaButton label="History" onClick={() => setMode("history")} />
-          </div>
-        </section>
-      )}
-
-      {/* Focused sections */}
-      <main ref={mainRef} className="mx-auto max-w-6xl px-4 pb-16">
-        {/* CREATE VIEW ONLY */}
-        {mode === "create" && (
-          <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur">
-            <div className="mb-4 flex items-center justify-between">
+      <main className="mx-auto max-w-7xl px-4 pb-16">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+          <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur xl:col-span-4">
+            <div className="mb-4">
               <h2 className="text-xl font-semibold">Create token</h2>
-              <button
-                onClick={() => setMode("home")}
-                className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs text-zinc-200 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
-                aria-label="Back to home"
-                role="button"
-                tabIndex={0}
-              >
-                ← Back
-              </button>
             </div>
 
             <div className="grid gap-4">
@@ -565,22 +524,10 @@ export default function MvpTokenApp() {
               <div className="mt-3 text-xs text-amber-300">Connect your wallet first to create a token.</div>
             )}
           </section>
-        )}
 
-        {/* CLAIM VIEW ONLY */}
-        {mode === "claim" && (
-          <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur">
+          <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur xl:col-span-4">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold">Claim tokens</h2>
-              <button
-                onClick={() => setMode("home")}
-                className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs text-zinc-200 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
-                aria-label="Back to home"
-                role="button"
-                tabIndex={0}
-              >
-                ← Back
-              </button>
             </div>
             <div className="mb-4 flex gap-4 border-b border-white/10">
               <button
@@ -677,9 +624,8 @@ export default function MvpTokenApp() {
 
             {claimTab === "table" && <ClaimsTable claims={claims} />}
           </section>
-        )}
-        {mode === "history" && (
-          <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur">
+
+          <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur xl:col-span-4">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold">History</h2>
               <div className="flex items-center gap-2">
@@ -691,15 +637,6 @@ export default function MvpTokenApp() {
                   tabIndex={0}
                 >
                   Clear history
-                </button>
-                <button
-                  onClick={() => setMode("home")}
-                  className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs text-zinc-200 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
-                  aria-label="Back to home"
-                  role="button"
-                  tabIndex={0}
-                >
-                  ← Back
                 </button>
               </div>
             </div>
@@ -718,7 +655,7 @@ export default function MvpTokenApp() {
               </div>
             )}
           </section>
-        )}
+        </div>
       </main>
 
       <footer className="border-t border-white/10 py-8 text-center text-xs text-zinc-400">
