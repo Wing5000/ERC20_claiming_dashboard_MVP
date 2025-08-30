@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect, useRef } from "react";
 import { ethers } from "ethers";
 import ClaimableToken from "./ClaimableToken.json";
 import NetworkBadge from "./components/NetworkBadge.jsx";
+import AddressBadge from "./components/AddressBadge.jsx";
 import TokenSummary from "./components/TokenSummary.jsx";
 import EligibilityInfo from "./components/EligibilityInfo.jsx";
 import CtaButton from "./components/CtaButton.jsx";
@@ -433,19 +434,19 @@ export default function MvpTokenApp() {
             {mode !== "home" && (
               <>
                 {connected && chainId && <NetworkBadge chainId={chainId} />}
-                <button
-                  className={`rounded-xl bg-white px-3 py-2 text-sm font-medium text-black shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-white/30`}
-                  onClick={!connected ? connectWallet : undefined}
-                  aria-label={
-                    connected && account
-                      ? `Connected wallet ${account.slice(0, 6)}…${account.slice(-4)}`
-                      : "Connect wallet"
-                  }
-                  role="button"
-                  tabIndex={0}
-                >
-                  {connected && account ? `${account.slice(0, 6)}…${account.slice(-4)}` : "Connect wallet"}
-                </button>
+                {connected && account ? (
+                  <AddressBadge address={account} chainId={chainId} />
+                ) : (
+                  <button
+                    className={`rounded-xl bg-white px-3 py-2 text-sm font-medium text-black shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-white/30`}
+                    onClick={connectWallet}
+                    aria-label="Connect wallet"
+                    role="button"
+                    tabIndex={0}
+                  >
+                    Connect wallet
+                  </button>
+                )}
               </>
             )}
           </div>
