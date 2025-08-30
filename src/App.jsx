@@ -6,6 +6,8 @@ import TokenSummary from "./components/TokenSummary.jsx";
 import EligibilityInfo from "./components/EligibilityInfo.jsx";
 import CtaButton from "./components/CtaButton.jsx";
 import FeeHint from "./components/FeeHint.jsx";
+import SuccessModal from "./components/SuccessModal.jsx";
+import { toast } from "./components/ToastProvider.jsx";
 
 // MVP single-file UI mock (no blockchain wired yet)
 // Tailwind only. Dark theme, simple modern buttons.
@@ -180,6 +182,7 @@ export default function MvpTokenApp() {
   const [claimedCount, setClaimedCount] = useState(0);
   const [claimHistory, setClaimHistory] = useState([]); // cumulative claimed values
   const [claimState, setClaimState] = useState("idle");
+  const [txHash, setTxHash] = useState(null);
 
   const formValid = name.trim() && symbol.trim() && author.trim() && description.trim();
 
@@ -273,6 +276,7 @@ export default function MvpTokenApp() {
         signer
       );
       const tx = await contract.claim();
+      setTxHash(tx.hash);
       await tx.wait();
       const rem = await contract.remaining();
       const count = await contract.claimCount();
@@ -281,12 +285,18 @@ export default function MvpTokenApp() {
       setClaimedCount(Number(count));
       setClaimHistory((h) => [...h, TOTAL - remainingTokens]);
       setClaimState("success");
-      setTimeout(() => setClaimState("idle"), 3000);
+      toast.success("Claim successful");
     } catch (err) {
       console.error("Claim failed", err);
+      toast.error("Claim failed");
       setClaimState("error");
       setTimeout(() => setClaimState("idle"), 3000);
     }
+  };
+
+  const closeModal = () => {
+    setTxHash(null);
+    setClaimState("idle");
   };
 
   const poolAbi = [
@@ -628,6 +638,9 @@ export default function MvpTokenApp() {
       <footer className="border-t border-white/10 py-8 text-center text-xs text-zinc-400">
         MVP UI — ERC‑20 + ClaimPool focused views
       </footer>
+      {claimState === "success" && txHash && (
+        <SuccessModal txHash={txHash} chainId={chainId} onClose={closeModal} />
+      )}
     </div>
   );
 }
