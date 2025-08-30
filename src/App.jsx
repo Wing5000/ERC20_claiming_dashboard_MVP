@@ -3,6 +3,7 @@ import { ethers } from "ethers";
 import ClaimableToken from "./ClaimableToken.json";
 import NetworkBadge from "./components/NetworkBadge.jsx";
 import TokenSummary from "./components/TokenSummary.jsx";
+import EligibilityInfo from "./components/EligibilityInfo.jsx";
 
 // MVP single-file UI mock (no blockchain wired yet)
 // Tailwind only. Dark theme, simple modern buttons.
@@ -378,6 +379,7 @@ export default function MvpTokenApp() {
   }, []);
 
   const claimedSoFar = Math.max(0, TOTAL - remaining);
+  const eligibleAmount = remaining >= 100 ? 100 : remaining;
 
   const connectWallet = async () => {
     if (!window.ethereum) {
@@ -557,6 +559,11 @@ export default function MvpTokenApp() {
               chainId={chainId}
             />
 
+            <EligibilityInfo
+              status={remaining > 0 ? "eligible" : "not eligible"}
+              eligibleAmount={eligibleAmount}
+            />
+
             <div className="mt-6 grid gap-4 md:grid-cols-3">
               <Stat label="Remaining pool" value={remaining.toLocaleString()} hint="out of 1,000,000" />
               <Stat label="Claim per tx" value="100" />
@@ -571,7 +578,7 @@ export default function MvpTokenApp() {
               <div className="text-xs text-zinc-400">
                 {tokenAddress ? `Token contract: ${tokenAddress}` : "Contract address will appear after deployment"}
               </div>
-              <CtaButton label={remaining > 0 ? (remaining >= 100 ? "Claim 100" : `Claim ${remaining}`) : "Pool empty"} onClick={doClaim} disabled={!connected || remaining === 0} />
+              <CtaButton label={remaining > 0 ? `Claim ${eligibleAmount}` : "Pool empty"} onClick={doClaim} disabled={!connected || remaining === 0} />
             </div>
 
             {!connected && (
