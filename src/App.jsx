@@ -236,6 +236,7 @@ export default function MvpTokenApp() {
   const [claims, setClaims] = useState([]);
   const [claimTab, setClaimTab] = useState("summary");
   const [claimState, setClaimState] = useState("idle");
+  const [createState, setCreateState] = useState("idle");
   const [txHash, setTxHash] = useState(null);
 
   const formValid = name.trim() && symbol.trim() && author.trim() && description.trim();
@@ -266,6 +267,7 @@ export default function MvpTokenApp() {
   const doCreate = async () => {
     if (!connected) return;
     try {
+      setCreateState("loading");
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       const factory = new ethers.ContractFactory(
@@ -307,8 +309,14 @@ export default function MvpTokenApp() {
       stored.unshift(entry);
       localStorage.setItem("tc.history", JSON.stringify(stored));
       setHistory(stored);
+      setCreateState("success");
+      toast.success("Deploy successful");
     } catch (err) {
       console.error("Deploy failed", err);
+      setCreateState("error");
+      toast.error("Deploy failed");
+    } finally {
+      setTimeout(() => setCreateState("idle"), 3000);
     }
   };
 
@@ -540,23 +548,44 @@ export default function MvpTokenApp() {
 
             {/* Claimed summary + simple chart (creator view) */}
             <div className="mt-8 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-              <Stat label="Claimed by others" value={claimedSoFar.toLocaleString()} hint={`out of ${TOTAL.toLocaleString()}`} />
-              <Stat label="Claim count" value={claimedCount.toLocaleString()} />
-              <div className="rounded-2xl border border-black/10 bg-black/5 p-4 dark:border-white/10 dark:bg-white/5">
-                <div className="text-sm text-zinc-700 dark:text-zinc-300">Claim activity</div>
-                <div className="mt-2">
-                  {claimHistory.length > 0 ? (
-                    <SimpleSparkline data={claimHistory} max={TOTAL} />
-                  ) : (
-                    <div className="text-xs text-zinc-500 dark:text-zinc-400">No claims yet</div>
-                  )}
-                </div>
-              </div>
+              {createState === "loading" ? (
+                <>
+                  <Skeleton className="h-24 w-full rounded-2xl" />
+                  <Skeleton className="h-24 w-full rounded-2xl" />
+                  <Skeleton className="h-24 w-full rounded-2xl" />
+                </>
+              ) : (
+                <>
+                  <Stat label="Claimed by others" value={claimedSoFar.toLocaleString()} hint={`out of ${TOTAL.toLocaleString()}`} />
+                  <Stat label="Claim count" value={claimedCount.toLocaleString()} />
+                  <div className="rounded-2xl border border-black/10 bg-black/5 p-4 dark:border-white/10 dark:bg-white/5">
+                    <div className="text-sm text-zinc-700 dark:text-zinc-300">Claim activity</div>
+                    <div className="mt-2">
+                      {claimHistory.length > 0 ? (
+                        <SimpleSparkline data={claimHistory} max={TOTAL} />
+                      ) : (
+                        <div className="text-xs text-zinc-500 dark:text-zinc-400">No claims yet</div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="mt-6 flex items-center justify-between">
               <div className="text-xs text-zinc-500 dark:text-zinc-400">Supply: 1,000,000 • Claim reward: 100</div>
-              <CtaButton label="Create token" onClick={doCreate} disabled={!connected || !formValid} />
+              <CtaButton
+                label={
+                  createState === "success"
+                    ? "Created!"
+                    : createState === "error"
+                    ? "Failed"
+                    : "Create token"
+                }
+                onClick={doCreate}
+                disabled={!connected || !formValid}
+                state={createState}
+              />
             </div>
 
             {!connected && (
@@ -596,18 +625,27 @@ export default function MvpTokenApp() {
 
             {claimTab === "summary" && (
               <>
-                <TokenSummary
-                  tokenAddress={tokenAddress}
-                  name={sampleToken.name}
-                  symbol={sampleToken.symbol}
-                  progress={Math.round(((TOTAL - remaining) / TOTAL) * 100)}
-                  chainId={chainId}
-                />
+                {tokenAddress ? (
+                  <>
+                    <TokenSummary
+                      tokenAddress={tokenAddress}
+                      name={sampleToken.name}
+                      symbol={sampleToken.symbol}
+                      progress={Math.round(((TOTAL - remaining) / TOTAL) * 100)}
+                      chainId={chainId}
+                    />
 
-                <EligibilityInfo
-                  status={remaining > 0 ? "eligible" : "not eligible"}
-                  eligibleAmount={eligibleAmount}
-                />
+                    <EligibilityInfo
+                      status={remaining > 0 ? "eligible" : "not eligible"}
+                      eligibleAmount={eligibleAmount}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Skeleton className="h-24 w-full rounded-2xl" />
+                    <Skeleton className="mt-6 h-20 w-full rounded-2xl" />
+                  </>
+                )}
 
                 <div className="mt-6 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
                   {tokenAddress ? (
