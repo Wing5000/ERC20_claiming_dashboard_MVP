@@ -7,6 +7,8 @@ import EligibilityInfo from "./components/EligibilityInfo.jsx";
 import CtaButton from "./components/CtaButton.jsx";
 import FeeHint from "./components/FeeHint.jsx";
 import SuccessModal from "./components/SuccessModal.jsx";
+import Skeleton from "./components/Skeleton.jsx";
+import Spinner from "./components/Spinner.jsx";
 import { toast } from "./components/ToastProvider.jsx";
 
 // MVP single-file UI mock (no blockchain wired yet)
@@ -141,18 +143,24 @@ function HistoryItem({ item, stats, onRefresh }) {
           Refresh
         </button>
       </div>
-      {stats?.loading ? (
-        <div className="mt-4 flex justify-center">
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+      {!stats || stats.loading ? (
+        <div className="mt-4 flex flex-col items-center gap-4">
+          <Spinner className="h-5 w-5" />
+          <div className="grid w-full gap-2 text-sm sm:grid-cols-2 md:grid-cols-3">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+          </div>
         </div>
       ) : (
         <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2 md:grid-cols-3">
           <div>
-            Claimed: {stats?.claimedTotal?.toLocaleString() || 0} / {stats?.totalSupply?.toLocaleString() || 0}
+            Claimed: {stats.claimedTotal.toLocaleString()} / {stats.totalSupply.toLocaleString()}
           </div>
-          <div>Remaining: {stats?.remaining?.toLocaleString() || 0}</div>
-          <div>Claim count: {stats?.claimCount ?? 0}</div>
-          <div>Unique claimers: {stats?.uniqueClaimers ?? 0}</div>
+          <div>Remaining: {stats.remaining.toLocaleString()}</div>
+          <div>Claim count: {stats.claimCount}</div>
+          <div>Unique claimers: {stats.uniqueClaimers}</div>
         </div>
       )}
     </div>
@@ -561,18 +569,36 @@ export default function MvpTokenApp() {
             />
 
             <div className="mt-6 grid gap-4 md:grid-cols-3">
-              <Stat label="Remaining pool" value={remaining.toLocaleString()} hint="out of 1,000,000" />
-              <Stat label="Claim per tx" value="100" />
-              <Stat label="Claim count" value={claimedCount.toLocaleString()} />
+              {tokenAddress ? (
+                <>
+                  <Stat label="Remaining pool" value={remaining.toLocaleString()} hint="out of 1,000,000" />
+                  <Stat label="Claim per tx" value="100" />
+                  <Stat label="Claim count" value={claimedCount.toLocaleString()} />
+                </>
+              ) : (
+                <>
+                  <Skeleton className="h-24 w-full rounded-2xl" />
+                  <Skeleton className="h-24 w-full rounded-2xl" />
+                  <Skeleton className="h-24 w-full rounded-2xl" />
+                </>
+              )}
             </div>
 
             <div className="mt-6">
-              <Progress total={TOTAL} remaining={remaining} />
+              {tokenAddress ? (
+                <Progress total={TOTAL} remaining={remaining} />
+              ) : (
+                <Skeleton className="h-6 w-full rounded-full" />
+              )}
             </div>
 
             <div className="mt-6 flex items-center justify-between">
               <div className="text-xs text-zinc-400">
-                {tokenAddress ? `Token contract: ${tokenAddress}` : "Contract address will appear after deployment"}
+                {tokenAddress ? (
+                  `Token contract: ${tokenAddress}`
+                ) : (
+                  <Skeleton className="h-4 w-40" />
+                )}
               </div>
               <div className="text-right">
                 <CtaButton

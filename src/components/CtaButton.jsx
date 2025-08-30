@@ -1,4 +1,5 @@
 import React from "react";
+import Spinner from "./Spinner.jsx";
 
 export default function CtaButton({ label, onClick, disabled = false, state = "idle" }) {
   const isLoading = state === "loading";
@@ -32,7 +33,7 @@ export default function CtaButton({ label, onClick, disabled = false, state = "i
       <span className={`pointer-events-none absolute inset-0 rounded-2xl ring-2 ${ringColors[state]}`} />
       {isLoading ? (
         <span className="relative flex items-center justify-center">
-          <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+          <Spinner className="h-5 w-5" />
         </span>
       ) : (
         <span className="relative tracking-tight">{label}</span>
