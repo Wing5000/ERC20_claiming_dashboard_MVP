@@ -1,11 +1,18 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Token Claim MVP</title>
+    <script>
+      const storedTheme = localStorage.getItem("tc.theme");
+      if (storedTheme === "dark" || storedTheme === "light") {
+        document.documentElement.classList.remove("light", "dark");
+        document.documentElement.classList.add(storedTheme);
+      }
+    </script>
   </head>
-  <body class="min-h-screen bg-black">
+  <body class="min-h-screen bg-background text-foreground">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
