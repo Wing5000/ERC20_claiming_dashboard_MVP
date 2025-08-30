@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { ethers } from "ethers";
 import ClaimableToken from "./ClaimableToken.json";
+import NetworkBadge from "./components/NetworkBadge.jsx";
 
 // MVP single-file UI mock (no blockchain wired yet)
 // Tailwind only. Dark theme, simple modern buttons.
@@ -184,6 +185,7 @@ export default function MvpTokenApp() {
   const [description, setDescription] = useState("");
   const [connected, setConnected] = useState(false);
   const [account, setAccount] = useState(null);
+  const [chainId, setChainId] = useState(null);
   const [tokenAddress, setTokenAddress] = useState(null);
   const [history, setHistory] = useState([]);
   const [historyStats, setHistoryStats] = useState({});
@@ -367,6 +369,13 @@ export default function MvpTokenApp() {
     }
   }, [mode, history]);
 
+  useEffect(() => {
+    if (!window.ethereum) return;
+    const handler = (id) => setChainId(Number(id));
+    window.ethereum.on("chainChanged", handler);
+    return () => window.ethereum.removeListener("chainChanged", handler);
+  }, []);
+
   const claimedSoFar = Math.max(0, TOTAL - remaining);
 
   const connectWallet = async () => {
@@ -376,6 +385,9 @@ export default function MvpTokenApp() {
     }
     try {
       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const network = await provider.getNetwork();
+      setChainId(Number(network.chainId));
       setConnected(true);
       setAccount(accounts[0]);
     } catch (err) {
@@ -404,12 +416,15 @@ export default function MvpTokenApp() {
               {theme === "dark" ? "Light" : "Dark"} mode
             </button>
             {mode !== "home" && (
-              <button
-                className={`rounded-xl bg-white px-3 py-2 text-sm font-medium text-black shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-white/30`}
-                onClick={!connected ? connectWallet : undefined}
-              >
-                {connected && account ? `${account.slice(0, 6)}…${account.slice(-4)}` : "Connect wallet"}
-              </button>
+              <>
+                {connected && chainId && <NetworkBadge chainId={chainId} />}
+                <button
+                  className={`rounded-xl bg-white px-3 py-2 text-sm font-medium text-black shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-white/30`}
+                  onClick={!connected ? connectWallet : undefined}
+                >
+                  {connected && account ? `${account.slice(0, 6)}…${account.slice(-4)}` : "Connect wallet"}
+                </button>
+              </>
             )}
           </div>
         </div>
