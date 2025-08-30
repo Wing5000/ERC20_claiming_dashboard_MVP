@@ -1,8 +1,6 @@
 import React, { useState, useMemo } from "react";
-
-function shorten(addr) {
-  return addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : "";
-}
+import AddressBadge from "./AddressBadge.jsx";
+import CopyButton from "./CopyButton.jsx";
 
 export default function ClaimsTable({ claims = [] }) {
   const [sortConfig, setSortConfig] = useState({ key: "time", direction: "desc" });
@@ -42,7 +40,7 @@ export default function ClaimsTable({ claims = [] }) {
   const sortIndicator = (key) => {
     if (sortConfig.key !== key) return "";
     return sortConfig.direction === "asc" ? "↑" : "↓";
-    };
+  };
 
   return (
     <div className="mt-6">
@@ -80,7 +78,12 @@ export default function ClaimsTable({ claims = [] }) {
           ) : (
             pageData.map((c, idx) => (
               <tr key={idx} className="border-t border-white/10">
-                <td className="px-2 py-2 font-mono">{shorten(c.address)}</td>
+                <td className="px-2 py-2">
+                  <div className="flex items-center gap-2">
+                    <AddressBadge address={c.address} />
+                    <CopyButton value={c.address} />
+                  </div>
+                </td>
                 <td className="px-2 py-2">{c.amount}</td>
                 <td className="px-2 py-2">{new Date(c.time).toLocaleString()}</td>
               </tr>
