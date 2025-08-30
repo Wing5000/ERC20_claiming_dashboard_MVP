@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect, useRef } from "react";
 import { ethers } from "ethers";
 import ClaimableToken from "./ClaimableToken.json";
 import NetworkBadge from "./components/NetworkBadge.jsx";
+import TokenSummary from "./components/TokenSummary.jsx";
 
 // MVP single-file UI mock (no blockchain wired yet)
 // Tailwind only. Dark theme, simple modern buttons.
@@ -548,31 +549,13 @@ export default function MvpTokenApp() {
               </button>
             </div>
 
-            <div className="flex items-start gap-4">
-              {/* Logo render */}
-              <div className="mt-1 flex h-14 w-14 items:center justify-center rounded-2xl border border-white/10 bg-white/5 shadow-sm">
-                {sampleToken.logoId === 0 && (
-                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-zinc-300 to-zinc-500" />
-                )}
-                {sampleToken.logoId === 1 && (
-                  <div className="h-8 w-8 rotate-45 rounded-lg bg-gradient-to-br from-zinc-400 to-zinc-700" />
-                )}
-                {sampleToken.logoId === 2 && (
-                  <div className="h-8 w-8 bg-[conic-gradient(at_50%_50%,#a1a1aa,#52525b,#a1a1aa)] rounded-full" />
-                )}
-              </div>
-
-              <div className="flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-lg font-semibold">{sampleToken.name}</h3>
-                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-zinc-200">
-                    {sampleToken.symbol}
-                  </span>
-                </div>
-                <div className="mt-1 text-sm text-zinc-300">{sampleToken.description}</div>
-                <div className="mt-2 text-xs text-zinc-400">Author: {sampleToken.author}</div>
-              </div>
-            </div>
+            <TokenSummary
+              tokenAddress={tokenAddress}
+              name={sampleToken.name}
+              symbol={sampleToken.symbol}
+              progress={Math.round(((TOTAL - remaining) / TOTAL) * 100)}
+              chainId={chainId}
+            />
 
             <div className="mt-6 grid gap-4 md:grid-cols-3">
               <Stat label="Remaining pool" value={remaining.toLocaleString()} hint="out of 1,000,000" />
