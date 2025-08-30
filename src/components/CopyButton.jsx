@@ -15,6 +15,7 @@ export default function CopyButton({ value, className = "" }) {
     <button
       onClick={handleCopy}
       title="Copy"
+      aria-label="Copy to clipboard"
       className={`rounded border border-white/10 bg-white/10 p-1 text-zinc-200 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30 ${className}`}
     >
       <svg
