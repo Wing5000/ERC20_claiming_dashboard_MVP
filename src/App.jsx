@@ -175,6 +175,43 @@ function HistoryItem({ item, stats, onRefresh }) {
   );
 }
 
+function SegmentedControl() {
+  const [active, setActive] = useState("create");
+  const items = [
+    { id: "create", label: "Create" },
+    { id: "claim", label: "Claim" },
+    { id: "history", label: "History" },
+  ];
+
+  const handleClick = (id) => {
+    setActive(id);
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  return (
+    <div className="mb-6 w-full">
+      <div className="flex w-full flex-col rounded-xl border border-white/10 bg-white/5 p-1 xl:flex-row">
+        {items.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => handleClick(item.id)}
+            className={`w-full rounded-lg px-4 py-2 text-sm transition xl:flex-1 ${
+              active === item.id
+                ? "bg-white/20 text-white"
+                : "text-zinc-400 hover:bg-white/10"
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function MvpTokenApp() {
   // --- UI state (mock only) ---
   const [logoId, setLogoId] = useState(0);
@@ -444,8 +481,9 @@ export default function MvpTokenApp() {
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-4 pb-16">
+        <SegmentedControl />
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-          <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur xl:col-span-4">
+          <section id="create" className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur xl:col-span-4">
             <div className="mb-4">
               <h2 className="text-xl font-semibold">Create token</h2>
             </div>
@@ -525,7 +563,7 @@ export default function MvpTokenApp() {
             )}
           </section>
 
-          <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur xl:col-span-4">
+          <section id="claim" className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur xl:col-span-4">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold">Claim tokens</h2>
             </div>
@@ -625,7 +663,7 @@ export default function MvpTokenApp() {
             {claimTab === "table" && <ClaimsTable claims={claims} />}
           </section>
 
-          <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur xl:col-span-4">
+          <section id="history" className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur xl:col-span-4">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold">History</h2>
               <div className="flex items-center gap-2">
