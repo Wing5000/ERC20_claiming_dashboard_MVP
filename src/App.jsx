@@ -4,6 +4,8 @@ import ClaimableToken from "./ClaimableToken.json";
 import NetworkBadge from "./components/NetworkBadge.jsx";
 import TokenSummary from "./components/TokenSummary.jsx";
 import EligibilityInfo from "./components/EligibilityInfo.jsx";
+import CtaButton from "./components/CtaButton.jsx";
+import FeeHint from "./components/FeeHint.jsx";
 
 // MVP single-file UI mock (no blockchain wired yet)
 // Tailwind only. Dark theme, simple modern buttons.
@@ -102,28 +104,6 @@ function SimpleSparkline({ data, max = 1_000_000, height = 56 }) {
   );
 }
 
-// Simple primary CTA (same style/color for both)
-function CtaButton({ label, onClick, disabled = false }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={`relative isolate w-full rounded-2xl px-6 py-5 text-center font-medium text-white transition ${
-        disabled ? "opacity-60 cursor-not-allowed" : "hover:-translate-y-0.5 active:translate-y-0"
-      } focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/40`}
-    >
-      {/* background + elevation */}
-      <span className="absolute inset-0 -z-10 rounded-2xl bg-[#0d1110] shadow-[0_12px_24px_rgba(16,185,129,0.12)]" />
-      {/* single neon outline */}
-      <span className={`pointer-events-none absolute inset-0 rounded-2xl ring-2 ${
-        disabled ? "ring-emerald-400/20" : "ring-emerald-400/40"
-      }`} />
-      <span className="relative tracking-tight">{label}</span>
-    </button>
-  );
-}
-
 function shorten(addr) {
   return addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : "";
 }
@@ -199,6 +179,7 @@ export default function MvpTokenApp() {
   const [remaining, setRemaining] = useState(1_000_000);
   const [claimedCount, setClaimedCount] = useState(0);
   const [claimHistory, setClaimHistory] = useState([]); // cumulative claimed values
+  const [claimState, setClaimState] = useState("idle");
 
   const formValid = name.trim() && symbol.trim() && author.trim() && description.trim();
 
@@ -283,6 +264,7 @@ export default function MvpTokenApp() {
   const doClaim = async () => {
     if (!connected || !tokenAddress) return;
     try {
+      setClaimState("loading");
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(
@@ -298,8 +280,12 @@ export default function MvpTokenApp() {
       setRemaining(remainingTokens);
       setClaimedCount(Number(count));
       setClaimHistory((h) => [...h, TOTAL - remainingTokens]);
+      setClaimState("success");
+      setTimeout(() => setClaimState("idle"), 3000);
     } catch (err) {
       console.error("Claim failed", err);
+      setClaimState("error");
+      setTimeout(() => setClaimState("idle"), 3000);
     }
   };
 
@@ -578,7 +564,23 @@ export default function MvpTokenApp() {
               <div className="text-xs text-zinc-400">
                 {tokenAddress ? `Token contract: ${tokenAddress}` : "Contract address will appear after deployment"}
               </div>
-              <CtaButton label={remaining > 0 ? `Claim ${eligibleAmount}` : "Pool empty"} onClick={doClaim} disabled={!connected || remaining === 0} />
+              <div className="text-right">
+                <CtaButton
+                  label={
+                    claimState === "success"
+                      ? "Claimed!"
+                      : claimState === "error"
+                      ? "Failed"
+                      : remaining > 0
+                      ? `Claim ${eligibleAmount}`
+                      : "Pool empty"
+                  }
+                  onClick={doClaim}
+                  disabled={!connected || remaining === 0}
+                  state={claimState}
+                />
+                <FeeHint text="~0.001 ETH" />
+              </div>
             </div>
 
             {!connected && (
