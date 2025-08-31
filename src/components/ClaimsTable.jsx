@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from "react";
-import AddressBadge from "./AddressBadge.jsx";
 import CopyButton from "./CopyButton.jsx";
 
 export default function ClaimsTable({ claims = [] }) {
@@ -128,10 +127,7 @@ export default function ClaimsTable({ claims = [] }) {
             pageData.map((c, idx) => (
               <tr key={idx} className="border-t border-white/10">
                 <td className="px-2 py-2">
-                  <div className="flex items-center gap-2">
-                    <AddressBadge address={c.address} />
-                    <CopyButton value={c.address} />
-                  </div>
+                  <CopyButton value={c.address} />
                 </td>
                 <td className="px-2 py-2">{c.amount}</td>
                 <td className="px-2 py-2">{new Date(c.time).toLocaleString()}</td>

@@ -1,6 +1,5 @@
 import React from "react";
 import NetworkBadge from "./NetworkBadge.jsx";
-import AddressBadge from "./AddressBadge.jsx";
 import CopyButton from "./CopyButton.jsx";
 
 const EXPLORERS = {
@@ -16,7 +15,7 @@ const EXPLORERS = {
   11155111: "https://sepolia.etherscan.io",
 };
 
-export default function TokenSummary({ tokenAddress, name, symbol, progress = 0, chainId }) {
+export default function TokenSummary({ tokenAddress, name, symbol, progress = 0, chainId, onAddToken }) {
   const explorerBase = chainId ? EXPLORERS[Number(chainId)] : null;
 
   return (
@@ -35,7 +34,6 @@ export default function TokenSummary({ tokenAddress, name, symbol, progress = 0,
 
       {tokenAddress && (
         <div className="flex items-center gap-2 text-xs text-zinc-400">
-          <AddressBadge address={tokenAddress} chainId={chainId} />
           <CopyButton value={tokenAddress} />
           {explorerBase && (
             <a
@@ -46,6 +44,14 @@ export default function TokenSummary({ tokenAddress, name, symbol, progress = 0,
             >
               Explorer
             </a>
+          )}
+          {onAddToken && (
+            <button
+              onClick={onAddToken}
+              className="text-emerald-400 hover:underline focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
+            >
+              Add to wallet
+            </button>
           )}
         </div>
       )}
