@@ -14,6 +14,8 @@ import RecentActivity from "./components/RecentActivity.jsx";
 import ClaimsTable from "./components/ClaimsTable.jsx";
 import Input from "./components/Input.jsx";
 import Stat from "./components/Stat.jsx";
+import InviteModal from "./components/InviteModal.jsx";
+import Leaderboard from "./components/Leaderboard.jsx";
 
 // MVP single-file UI mock (no blockchain wired yet)
 // Tailwind only. Dark theme, simple modern buttons.
@@ -195,6 +197,7 @@ export default function MvpTokenApp() {
   const [claimState, setClaimState] = useState("idle");
   const [createState, setCreateState] = useState("idle");
   const [txHash, setTxHash] = useState(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   const nameRef = useRef(null);
 
@@ -806,6 +809,7 @@ export default function MvpTokenApp() {
                 </div>
 
                 <RecentActivity activity={activity} />
+                <Leaderboard />
 
                 <div className="mt-6 flex items-center justify-between">
                   <div className="text-xs text-zinc-400">
@@ -833,6 +837,15 @@ export default function MvpTokenApp() {
                 {!connected && (
                   <div className="mt-3 text-xs text-amber-300">Connect your wallet to claim tokens.</div>
                 )}
+
+                <div className="mt-4 text-right">
+                  <button
+                    onClick={() => setInviteOpen(true)}
+                    className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs text-zinc-200 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
+                  >
+                    Invite to claim
+                  </button>
+                </div>
             </>
           )}
 
@@ -875,8 +888,14 @@ export default function MvpTokenApp() {
         </section>
       </main>
       {claimState === "success" && txHash && (
-        <SuccessModal txHash={txHash} chainId={chainId} onClose={closeModal} />
+        <SuccessModal
+          txHash={txHash}
+          chainId={chainId}
+          onClose={closeModal}
+          onInvite={() => setInviteOpen(true)}
+        />
       )}
+      {inviteOpen && <InviteModal onClose={() => setInviteOpen(false)} />}
     </div>
   );
 }
