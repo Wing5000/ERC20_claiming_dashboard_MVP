@@ -10,8 +10,8 @@ function relativeTime(ts) {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-export default function RecentActivity({ claims = [] }) {
-  const items = [...claims].sort((a, b) => b.time - a.time).slice(0, 5);
+export default function RecentActivity({ activity = [] }) {
+  const items = [...activity].sort((a, b) => b.time - a.time).slice(0, 5);
 
   if (items.length === 0) {
     return <div className="mt-6 text-sm text-zinc-400">No recent activity.</div>;
@@ -27,10 +27,20 @@ export default function RecentActivity({ claims = [] }) {
             className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2"
           >
             <div className="flex items-center gap-2">
-              <AddressBadge address={tx.address} />
-              <CopyButton value={tx.address} />
+              {tx.type === "claim" ? (
+                <>
+                  <AddressBadge address={tx.address} />
+                  <CopyButton value={tx.address} />
+                </>
+              ) : (
+                <>
+                  <span>Loaded contract:</span>
+                  <AddressBadge address={tx.token} />
+                  <CopyButton value={tx.token} />
+                </>
+              )}
             </div>
-            <span>{tx.amount}</span>
+            {tx.type === "claim" && <span>{tx.amount}</span>}
             <span className="text-xs text-zinc-400">{relativeTime(tx.time)}</span>
           </li>
         ))}

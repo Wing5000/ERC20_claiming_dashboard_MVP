@@ -199,6 +199,7 @@ export default function MvpTokenApp() {
   const [claimedCount, setClaimedCount] = useState(0);
   const [claimHistory, setClaimHistory] = useState([]); // cumulative claimed values
   const [claims, setClaims] = useState([]);
+  const [activity, setActivity] = useState([]);
   const [claimTab, setClaimTab] = useState("summary");
   const [claimState, setClaimState] = useState("idle");
   const [createState, setCreateState] = useState("idle");
@@ -276,6 +277,11 @@ export default function MvpTokenApp() {
       stored.unshift(entry);
       localStorage.setItem("tc.history", JSON.stringify(stored));
       setHistory(stored);
+
+      setActivity((a) => [
+        ...a,
+        { type: "contract-loaded", token: contractInput, time: Date.now() },
+      ]);
 
       setLoadState("idle");
     } catch (err) {
@@ -356,7 +362,19 @@ export default function MvpTokenApp() {
       setTxHash(tx.hash);
       await tx.wait();
       const addr = await signer.getAddress();
-      setClaims((c) => [...c, { address: addr, amount: eligibleAmount, time: Date.now() }]);
+      setClaims((c) => [
+        ...c,
+        { address: addr, amount: eligibleAmount, time: Date.now() },
+      ]);
+      setActivity((a) => [
+        ...a,
+        {
+          type: "claim",
+          address: addr,
+          amount: eligibleAmount,
+          time: Date.now(),
+        },
+      ]);
       const rem = await contract.remaining();
       const count = await contract.claimCount();
       const remainingTokens = Number(ethers.formatUnits(rem, 18));
@@ -735,7 +753,7 @@ export default function MvpTokenApp() {
                   )}
                 </div>
 
-                <RecentActivity claims={claims} />
+                <RecentActivity activity={activity} />
 
                 <div className="mt-6 flex items-center justify-between">
                   <div className="text-xs text-zinc-400">
