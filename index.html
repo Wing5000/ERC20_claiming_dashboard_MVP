@@ -1,16 +1,9 @@
 <!doctype html>
-<html lang="en" class="light">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Token Claim MVP</title>
-    <script>
-      const storedTheme = localStorage.getItem("tc.theme");
-      if (storedTheme === "dark" || storedTheme === "light") {
-        document.documentElement.classList.remove("light", "dark");
-        document.documentElement.classList.add(storedTheme);
-      }
-    </script>
   </head>
   <body class="min-h-screen bg-background text-foreground">
     <div id="root"></div>

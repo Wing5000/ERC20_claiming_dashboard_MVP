@@ -3,9 +3,6 @@
 @tailwind utilities;
 
 @layer base {
-  .light {
-    color-scheme: light;
-  }
   .dark {
     color-scheme: dark;
   }
