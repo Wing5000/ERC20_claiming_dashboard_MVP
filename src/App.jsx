@@ -740,10 +740,6 @@ export default function MvpTokenApp() {
             )}
         </section>
       </main>
-
-      <footer className="border-t border-black/10 py-8 text-center text-xs text-zinc-500 dark:border-white/10 dark:text-zinc-400">
-        MVP UI — ERC‑20 + ClaimPool focused views
-      </footer>
       {claimState === "success" && txHash && (
         <SuccessModal txHash={txHash} chainId={chainId} onClose={closeModal} />
       )}
