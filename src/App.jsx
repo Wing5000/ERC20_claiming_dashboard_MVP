@@ -14,6 +14,8 @@ import RecentActivity from "./components/RecentActivity.jsx";
 import ClaimsTable from "./components/ClaimsTable.jsx";
 import Input from "./components/Input.jsx";
 import Stat from "./components/Stat.jsx";
+import Stepper from "./components/Stepper.jsx";
+import Joyride, { STATUS } from "react-joyride";
 
 // MVP single-file UI mock (no blockchain wired yet)
 // Tailwind only. Dark theme, simple modern buttons.
@@ -195,10 +197,29 @@ export default function MvpTokenApp() {
   const [claimState, setClaimState] = useState("idle");
   const [createState, setCreateState] = useState("idle");
   const [txHash, setTxHash] = useState(null);
+  const [whyOpen, setWhyOpen] = useState(false);
+  const [tourRun, setTourRun] = useState(false);
 
   const nameRef = useRef(null);
 
   const formValid = name.trim() && symbol.trim() && author.trim() && description.trim();
+
+  const currentStep = !connected ? 1 : claimState === "success" ? 3 : 2;
+
+  const tourSteps = [
+    {
+      target: "[data-tour='connect']",
+      content: "Connect your wallet to get started.",
+    },
+    {
+      target: "[data-tour='contract']",
+      content: "Load a contract to verify eligibility.",
+    },
+    {
+      target: "[data-tour='claim']",
+      content: "Once verified, claim your tokens here.",
+    },
+  ];
 
   const sampleToken = useMemo(
     () => ({
@@ -218,6 +239,21 @@ export default function MvpTokenApp() {
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("tc.history") || "[]");
     setHistory(stored);
+  }, []);
+
+  useEffect(() => {
+    const done = localStorage.getItem("tc.tour.complete");
+    if (!done) {
+      setTourRun(true);
+    }
+  }, []);
+
+  const handleTourCallback = useCallback((data) => {
+    const { status } = data;
+    if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status)) {
+      localStorage.setItem("tc.tour.complete", "true");
+      setTourRun(false);
+    }
   }, []);
 
   const loadContract = async () => {
@@ -541,6 +577,15 @@ export default function MvpTokenApp() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <BackgroundFX />
+      <Joyride
+        steps={tourSteps}
+        run={tourRun}
+        callback={handleTourCallback}
+        showSkipButton
+        continuous
+        locale={{ last: "Got it" }}
+        styles={{ options: { zIndex: 10000 } }}
+      />
 
       {/* Topbar */}
       <header className="sticky top-0 z-20 border-b border-white/10 bg-black/40 backdrop-blur">
@@ -569,20 +614,46 @@ export default function MvpTokenApp() {
                 </button>
               </>
             ) : (
-              <button
-                className={`rounded-xl bg-white px-3 py-2 text-sm font-medium text-black shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-white/30`}
-                onClick={connectWallet}
-                aria-label="Connect wallet"
-                role="button"
-                tabIndex={0}
-              >
-                Connect wallet
-              </button>
+              <div className="flex flex-col items-end">
+                <button
+                  type="button"
+                  className="mb-1 text-xs text-zinc-400 underline decoration-dotted"
+                  onMouseEnter={() => setWhyOpen(true)}
+                  onMouseLeave={() => setWhyOpen(false)}
+                  onFocus={() => setWhyOpen(true)}
+                  onBlur={() => setWhyOpen(false)}
+                  aria-describedby="why-connect-tooltip"
+                >
+                  Why connect wallet?
+                </button>
+                {whyOpen && (
+                  <div
+                    id="why-connect-tooltip"
+                    role="tooltip"
+                    className="mb-1 w-64 rounded-md bg-zinc-800 p-2 text-xs text-zinc-100 shadow-lg"
+                  >
+                    Connecting your wallet lets us verify eligibility and process claims.
+                  </div>
+                )}
+                <button
+                  data-tour="connect"
+                  className={`rounded-xl bg-white px-3 py-2 text-sm font-medium text-black shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-white/30`}
+                  onClick={connectWallet}
+                  aria-label="Connect wallet"
+                  role="button"
+                  tabIndex={0}
+                >
+                  Connect wallet
+                </button>
+              </div>
             )}
           </div>
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-4 pb-16">
+        <div className="mb-6">
+          <Stepper currentStep={currentStep} />
+        </div>
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <section
             id="create"
@@ -709,6 +780,7 @@ export default function MvpTokenApp() {
                 loadContract();
               }}
               className="mb-4 flex gap-2"
+              data-tour="contract"
             >
               <Input
                 value={contractInput}
@@ -811,7 +883,7 @@ export default function MvpTokenApp() {
                   <div className="text-xs text-zinc-400">
                     {tokenAddress ? `Token contract: ${tokenAddress}` : "No contract loaded"}
                   </div>
-                  <div className="text-right">
+                  <div className="text-right" data-tour="claim">
                     <CtaButton
                       label={
                         claimState === "success"
