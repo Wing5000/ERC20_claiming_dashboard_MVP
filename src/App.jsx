@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { ethers } from "ethers";
 import ClaimableToken from "./ClaimableToken.json";
 import NetworkBadge from "./components/NetworkBadge.jsx";
@@ -201,6 +201,8 @@ export default function MvpTokenApp() {
   const [createState, setCreateState] = useState("idle");
   const [txHash, setTxHash] = useState(null);
 
+  const nameRef = useRef(null);
+
   const formValid = name.trim() && symbol.trim() && author.trim() && description.trim();
 
   const sampleToken = useMemo(
@@ -213,6 +215,10 @@ export default function MvpTokenApp() {
     }),
     [name, symbol, author, description, logoId]
   );
+
+  useEffect(() => {
+    nameRef.current.focus();
+  }, []);
 
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("tc.history") || "[]");
@@ -481,6 +487,7 @@ export default function MvpTokenApp() {
               <div>
                 <label className="mb-1 block text-sm text-zinc-300">Name *</label>
                 <input
+                  ref={nameRef}
                   className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none placeholder:text-zinc-500 focus:ring-2 focus:ring-emerald-400/30"
                   placeholder="e.g. WalkCoin"
                   value={name}
