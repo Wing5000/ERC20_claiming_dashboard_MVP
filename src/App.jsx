@@ -13,6 +13,7 @@ import { toast } from "./components/ToastProvider.jsx";
 import RecentActivity from "./components/RecentActivity.jsx";
 import ClaimsTable from "./components/ClaimsTable.jsx";
 import Input from "./components/Input.jsx";
+import Stat from "./components/Stat.jsx";
 
 // MVP single-file UI mock (no blockchain wired yet)
 // Tailwind only. Dark theme, simple modern buttons.
@@ -60,16 +61,6 @@ function LogoSwatch({ id, selected, onSelect, label, className = "" }) {
       </div>
       <span className="absolute -bottom-6 text-xs text-zinc-300">{label}</span>
     </button>
-  );
-}
-
-function Stat({ label, value, hint }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.02)] backdrop-blur">
-      <div className="text-sm text-zinc-300">{label}</div>
-      <div className="mt-1 text-2xl font-semibold tracking-tight text-white">{value}</div>
-      {hint && <div className="mt-1 text-xs text-zinc-400">{hint}</div>}
-    </div>
   );
 }
 
@@ -660,8 +651,16 @@ export default function MvpTokenApp() {
                 </>
               ) : (
                 <>
-                  <Stat label="Claimed by others" value={claimedSoFar.toLocaleString()} hint={`out of ${TOTAL.toLocaleString()}`} />
-                  <Stat label="Claim count" value={claimedCount.toLocaleString()} />
+                  <Stat
+                    label="Claimed by others"
+                    value={claimedSoFar.toLocaleString()}
+                    hint="Tokens already claimed by other users"
+                  />
+                  <Stat
+                    label="Claim count"
+                    value={claimedCount.toLocaleString()}
+                    hint="Total number of claim transactions"
+                  />
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                     <div className="text-sm text-zinc-300">Claim activity</div>
                     <div className="mt-2">
@@ -773,9 +772,21 @@ export default function MvpTokenApp() {
                 <div className="mt-6 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
                   {tokenAddress ? (
                     <>
-                      <Stat label="Remaining pool" value={remaining.toLocaleString()} hint="out of 1,000,000" />
-                      <Stat label="Claim per tx" value="100" />
-                      <Stat label="Claim count" value={claimedCount.toLocaleString()} />
+                      <Stat
+                        label="Remaining pool"
+                        value={remaining.toLocaleString()}
+                        hint="Tokens left to be claimed"
+                      />
+                      <Stat
+                        label="Claim per tx"
+                        value="100"
+                        hint="Tokens claimable per transaction"
+                      />
+                      <Stat
+                        label="Claim count"
+                        value={claimedCount.toLocaleString()}
+                        hint="Total number of claim transactions"
+                      />
                     </>
                   ) : (
                     <div className="col-span-3 rounded-2xl border border-dashed border-white/10 p-6 text-center text-sm text-zinc-400">
