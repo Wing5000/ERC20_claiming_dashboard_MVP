@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { ethers } from "ethers";
 import ClaimableToken from "./ClaimableToken.json";
 import NetworkBadge from "./components/NetworkBadge.jsx";
@@ -382,16 +382,33 @@ export default function MvpTokenApp() {
     setHistoryStats({});
   };
 
+  const disconnectWallet = useCallback(() => {
+    setConnected(false);
+    setAccount(null);
+    setChainId(null);
+  }, []);
+
   useEffect(() => {
     history.forEach((h) => refreshEntry(h));
   }, [history]);
 
   useEffect(() => {
-    if (!window.ethereum) return;
-    const handler = (id) => setChainId(Number(id));
-    window.ethereum.on("chainChanged", handler);
-    return () => window.ethereum.removeListener("chainChanged", handler);
-  }, []);
+    if (!window.ethereum || !connected) return;
+    const handleChainChanged = (id) => setChainId(Number(id));
+    const handleAccountsChanged = (accounts) => {
+      if (accounts.length === 0) {
+        disconnectWallet();
+      } else {
+        setAccount(accounts[0]);
+      }
+    };
+    window.ethereum.on("chainChanged", handleChainChanged);
+    window.ethereum.on("accountsChanged", handleAccountsChanged);
+    return () => {
+      window.ethereum.removeListener("chainChanged", handleChainChanged);
+      window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
+    };
+  }, [connected, disconnectWallet]);
 
   const claimedSoFar = Math.max(0, TOTAL - remaining);
   const eligibleAmount = remaining >= 100 ? 100 : remaining;
@@ -428,15 +445,32 @@ export default function MvpTokenApp() {
           </div>
           <div className="flex items-center gap-2">
             <NetworkBadge chainId={chainId} />
-            <button
-              className={`rounded-xl bg-black px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-black/30 dark:bg-white dark:text-black dark:focus:ring-white/30`}
-              onClick={connectWallet}
-              aria-label="Connect wallet"
-              role="button"
-              tabIndex={0}
-            >
-              {connected && account ? shorten(account) : "Connect wallet"}
-            </button>
+            {connected ? (
+              <>
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                  {shorten(account)}
+                </span>
+                <button
+                  className={`rounded-xl bg-black px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-black/30 dark:bg-white dark:text-black dark:focus:ring-white/30`}
+                  onClick={disconnectWallet}
+                  aria-label="Disconnect wallet"
+                  role="button"
+                  tabIndex={0}
+                >
+                  Disconnect
+                </button>
+              </>
+            ) : (
+              <button
+                className={`rounded-xl bg-black px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-black/30 dark:bg-white dark:text-black dark:focus:ring-white/30`}
+                onClick={connectWallet}
+                aria-label="Connect wallet"
+                role="button"
+                tabIndex={0}
+              >
+                Connect wallet
+              </button>
+            )}
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               className="rounded-xl border border-black/10 bg-black/10 px-3 py-1.5 text-xs text-zinc-700 transition hover:bg-black/20 focus:outline-none focus:ring-2 focus:ring-black/30 dark:border-white/10 dark:bg-white/10 dark:text-zinc-200 dark:hover:bg-white/20 dark:focus:ring-white/30"
