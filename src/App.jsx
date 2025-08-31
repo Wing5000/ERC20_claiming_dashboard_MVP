@@ -188,6 +188,8 @@ export default function MvpTokenApp() {
   const [account, setAccount] = useState(null);
   const [chainId, setChainId] = useState(null);
   const [tokenAddress, setTokenAddress] = useState(null);
+  const [contractInput, setContractInput] = useState("");
+  const [loadState, setLoadState] = useState("idle");
   const [history, setHistory] = useState([]);
   const [historyStats, setHistoryStats] = useState({});
 
@@ -226,6 +228,38 @@ export default function MvpTokenApp() {
     setHistory(stored);
   }, []);
 
+  const loadContract = async () => {
+    if (!ethers.isAddress(contractInput)) {
+      toast.error("Invalid address");
+      return;
+    }
+    try {
+      setLoadState("loading");
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const contract = new ethers.Contract(
+        contractInput,
+        ClaimableToken.abi,
+        provider
+      );
+      const [rem, count, tokenName, tokenSymbol] = await Promise.all([
+        contract.remaining(),
+        contract.claimCount(),
+        contract.name?.(),
+        contract.symbol?.(),
+      ]);
+      const remainingTokens = Number(ethers.formatUnits(rem, 18));
+      setTokenAddress(contractInput);
+      setRemaining(remainingTokens);
+      setClaimedCount(Number(count));
+      if (tokenName) setName(tokenName);
+      if (tokenSymbol) setSymbol(tokenSymbol);
+      setLoadState("idle");
+    } catch (err) {
+      console.error("Failed to load contract", err);
+      toast.error("Failed to load contract");
+      setLoadState("idle");
+    }
+  };
 
   const doCreate = async () => {
     if (!connected) return;
@@ -587,6 +621,26 @@ export default function MvpTokenApp() {
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold">Claim tokens</h2>
             </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                loadContract();
+              }}
+              className="mb-4 flex gap-2"
+            >
+              <Input
+                value={contractInput}
+                onChange={(e) => setContractInput(e.target.value)}
+                placeholder="Contract address"
+              />
+              <button
+                type="submit"
+                className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-sm text-white transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
+                disabled={loadState === "loading"}
+              >
+                {loadState === "loading" ? <Spinner className="h-5 w-5" /> : "Load contract"}
+              </button>
+            </form>
             <div className="mb-4 flex gap-4 border-b border-white/10">
               <button
                 onClick={() => setClaimTab("summary")}
@@ -628,10 +682,9 @@ export default function MvpTokenApp() {
                     />
                   </>
                 ) : (
-                  <>
-                    <Skeleton className="h-24 w-full rounded-2xl" />
-                    <Skeleton className="mt-6 h-20 w-full rounded-2xl" />
-                  </>
+                  <div className="rounded-2xl border border-dashed border-white/10 p-6 text-center text-sm text-zinc-400">
+                    Enter a contract address to load token details.
+                  </div>
                 )}
 
                 <div className="mt-6 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
@@ -642,11 +695,9 @@ export default function MvpTokenApp() {
                       <Stat label="Claim count" value={claimedCount.toLocaleString()} />
                     </>
                   ) : (
-                    <>
-                      <Skeleton className="h-24 w-full rounded-2xl" />
-                      <Skeleton className="h-24 w-full rounded-2xl" />
-                      <Skeleton className="h-24 w-full rounded-2xl" />
-                    </>
+                    <div className="col-span-3 rounded-2xl border border-dashed border-white/10 p-6 text-center text-sm text-zinc-400">
+                      Load a token contract to see stats.
+                    </div>
                   )}
                 </div>
 
@@ -654,7 +705,9 @@ export default function MvpTokenApp() {
                   {tokenAddress ? (
                     <Progress total={TOTAL} remaining={remaining} />
                   ) : (
-                    <Skeleton className="h-6 w-full rounded-full" />
+                    <div className="rounded-full border border-dashed border-white/10 p-3 text-center text-sm text-zinc-400">
+                      Load a token contract to see progress.
+                    </div>
                   )}
                 </div>
 
@@ -662,11 +715,7 @@ export default function MvpTokenApp() {
 
                 <div className="mt-6 flex items-center justify-between">
                   <div className="text-xs text-zinc-400">
-                    {tokenAddress ? (
-                      `Token contract: ${tokenAddress}`
-                    ) : (
-                      <Skeleton className="h-4 w-40" />
-                    )}
+                    {tokenAddress ? `Token contract: ${tokenAddress}` : "No contract loaded"}
                   </div>
                   <div className="text-right">
                     <CtaButton
@@ -680,7 +729,7 @@ export default function MvpTokenApp() {
                           : "Pool empty"
                       }
                       onClick={doClaim}
-                      disabled={!connected || remaining === 0}
+                      disabled={!connected || !tokenAddress || remaining === 0}
                       state={claimState}
                     />
                     <FeeHint text="~0.001 ETH" />
