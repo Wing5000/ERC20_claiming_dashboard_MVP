@@ -7,6 +7,7 @@ import EligibilityInfo from "./components/EligibilityInfo.jsx";
 import CtaButton from "./components/CtaButton.jsx";
 import FeeHint from "./components/FeeHint.jsx";
 import SuccessModal from "./components/SuccessModal.jsx";
+import LeadModal from "./components/LeadModal.jsx";
 import Skeleton from "./components/Skeleton.jsx";
 import Spinner from "./components/Spinner.jsx";
 import { toast } from "./components/ToastProvider.jsx";
@@ -195,6 +196,11 @@ export default function MvpTokenApp() {
   const [claimState, setClaimState] = useState("idle");
   const [createState, setCreateState] = useState("idle");
   const [txHash, setTxHash] = useState(null);
+  const [showLeadModal, setShowLeadModal] = useState(false);
+  const [leadHandled, setLeadHandled] = useState(() =>
+    localStorage.getItem("lead-submitted") === "true" ||
+    localStorage.getItem("lead-dismissed") === "true"
+  );
 
   const nameRef = useRef(null);
 
@@ -218,6 +224,34 @@ export default function MvpTokenApp() {
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("tc.history") || "[]");
     setHistory(stored);
+  }, []);
+
+  const maybeOpenLeadModal = useCallback(() => {
+    if (!leadHandled) {
+      setShowLeadModal(true);
+    }
+  }, [leadHandled]);
+
+  useEffect(() => {
+    const handleExit = (e) => {
+      if (e.clientY <= 0) {
+        maybeOpenLeadModal();
+      }
+    };
+    document.addEventListener("mouseleave", handleExit);
+    return () => document.removeEventListener("mouseleave", handleExit);
+  }, [maybeOpenLeadModal]);
+
+  const submitLead = useCallback(() => {
+    localStorage.setItem("lead-submitted", "true");
+    setLeadHandled(true);
+    setShowLeadModal(false);
+  }, []);
+
+  const dismissLead = useCallback(() => {
+    localStorage.setItem("lead-dismissed", "true");
+    setLeadHandled(true);
+    setShowLeadModal(false);
   }, []);
 
   const loadContract = async () => {
@@ -426,6 +460,7 @@ export default function MvpTokenApp() {
   const closeModal = () => {
     setTxHash(null);
     setClaimState("idle");
+    maybeOpenLeadModal();
   };
 
   const poolAbi = [
@@ -876,6 +911,9 @@ export default function MvpTokenApp() {
       </main>
       {claimState === "success" && txHash && (
         <SuccessModal txHash={txHash} chainId={chainId} onClose={closeModal} />
+      )}
+      {showLeadModal && (
+        <LeadModal onSubmit={submitLead} onClose={dismissLead} />
       )}
     </div>
   );

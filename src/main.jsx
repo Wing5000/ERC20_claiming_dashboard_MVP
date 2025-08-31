@@ -10,3 +10,9 @@ root.render(
     <App />
   </ToastProvider>
 )
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js')
+  })
+}
