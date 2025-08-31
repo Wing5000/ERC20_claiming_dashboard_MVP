@@ -38,8 +38,8 @@ function LogoSwatch({ id, selected, onSelect, label, className = "" }) {
       className={`group relative flex h-16 w-16 items-center justify-center rounded-2xl border transition-all ${
         selected
           ? "border-emerald-400 ring-4 ring-emerald-400/20"
-          : "border-black/15 hover:border-black/30 dark:border-white/15 dark:hover:border-white/30"
-      } focus:outline-none focus:ring-2 focus:ring-black/30 dark:focus:ring-white/30 ${className}`}
+          : "border-white/15 hover:border-white/30"
+      } focus:outline-none focus:ring-2 focus:ring-white/30 ${className}`}
       aria-pressed={selected}
       aria-label={`Select logo ${label}`}
       role="button"
@@ -57,17 +57,17 @@ function LogoSwatch({ id, selected, onSelect, label, className = "" }) {
           <div className="h-8 w-8 bg-[conic-gradient(at_50%_50%,#a1a1aa,#52525b,#a1a1aa)] rounded-full" />
         )}
       </div>
-      <span className="absolute -bottom-6 text-xs text-zinc-700 dark:text-zinc-300">{label}</span>
+      <span className="absolute -bottom-6 text-xs text-zinc-300">{label}</span>
     </button>
   );
 }
 
 function Stat({ label, value, hint }) {
   return (
-    <div className="rounded-2xl border border-black/10 bg-black/5 p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.02)] backdrop-blur dark:border-white/10 dark:bg-white/5">
-      <div className="text-sm text-zinc-700 dark:text-zinc-300">{label}</div>
-      <div className="mt-1 text-2xl font-semibold tracking-tight text-black dark:text-white">{value}</div>
-      {hint && <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{hint}</div>}
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.02)] backdrop-blur">
+      <div className="text-sm text-zinc-300">{label}</div>
+      <div className="mt-1 text-2xl font-semibold tracking-tight text-white">{value}</div>
+      {hint && <div className="mt-1 text-xs text-zinc-400">{hint}</div>}
     </div>
   );
 }
@@ -77,17 +77,17 @@ function Progress({ total, remaining }) {
   const pct = Math.min(100, Math.round((claimed / total) * 100));
   return (
     <div>
-      <div className="mb-2 flex items-center justify-between text-sm text-zinc-700 dark:text-zinc-300">
+      <div className="mb-2 flex items-center justify-between text-sm text-zinc-300">
         <span>Claim progress</span>
         <span>{pct}%</span>
       </div>
-      <div className="h-3 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
+      <div className="h-3 w-full overflow-hidden rounded-full bg-white/10">
         <div
           className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-indigo-400 transition-all"
           style={{ width: `${pct}%` }}
         />
       </div>
-      <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+      <div className="mt-2 text-xs text-zinc-400">
         {claimed.toLocaleString()} / {total.toLocaleString()} tokens claimed
       </div>
     </div>
@@ -131,20 +131,20 @@ function relativeTime(ts) {
 
 function HistoryItem({ item, stats, onRefresh }) {
   return (
-    <div className="rounded-2xl border border-black/10 bg-black/5 p-4 dark:border-white/10 dark:bg-white/5">
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="font-semibold">
             {item.name} / {item.symbol}
           </div>
-          <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+          <div className="mt-1 text-xs text-zinc-400">
             Token {shorten(item.token)} • Pool {shorten(item.pool)} • Chain {item.chainId}
           </div>
-          <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{relativeTime(item.createdAt)}</div>
+          <div className="mt-1 text-xs text-zinc-400">{relativeTime(item.createdAt)}</div>
         </div>
           <button
             onClick={onRefresh}
-            className="rounded-xl border border-black/10 bg-black/10 px-3 py-1 text-xs text-zinc-700 transition hover:bg-black/20 focus:outline-none focus:ring-2 focus:ring-black/30 dark:border-white/10 dark:bg-white/10 dark:text-zinc-200 dark:hover:bg-white/20 dark:focus:ring-white/30"
+            className="rounded-xl border border-white/10 bg-white/10 px-3 py-1 text-xs text-zinc-200 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
             aria-label="Refresh"
             role="button"
             tabIndex={0}
@@ -189,7 +189,6 @@ export default function MvpTokenApp() {
   const [tokenAddress, setTokenAddress] = useState(null);
   const [history, setHistory] = useState([]);
   const [historyStats, setHistoryStats] = useState({});
-  const [theme, setTheme] = useState(() => localStorage.getItem("tc.theme") || "light");
 
   // mock token detail preview
   const TOTAL = 1_000_000;
@@ -220,12 +219,6 @@ export default function MvpTokenApp() {
     setHistory(stored);
   }, []);
 
-  useEffect(() => {
-    const root = document.documentElement;
-    root.classList.remove("light", "dark");
-    root.classList.add(theme);
-    localStorage.setItem("tc.theme", theme);
-  }, [theme]);
 
   const doCreate = async () => {
     if (!connected) return;
@@ -435,10 +428,10 @@ export default function MvpTokenApp() {
       <BackgroundFX />
 
       {/* Topbar */}
-      <header className="sticky top-0 z-20 border-b border-black/10 bg-white/40 backdrop-blur dark:border-white/10 dark:bg-black/40">
+      <header className="sticky top-0 z-20 border-b border-white/10 bg-black/40 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-black/10 text-black shadow-inner dark:bg-white/10 dark:text-white">
+            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-white/10 text-white shadow-inner">
               <span className="text-sm font-bold">MVP</span>
             </div>
             <div className="text-lg font-semibold tracking-tight">Token Claim</div>
@@ -447,11 +440,11 @@ export default function MvpTokenApp() {
             <NetworkBadge chainId={chainId} />
             {connected ? (
               <>
-                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                <span className="text-sm font-medium text-zinc-200">
                   {shorten(account)}
                 </span>
                 <button
-                  className={`rounded-xl bg-black px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-black/30 dark:bg-white dark:text-black dark:focus:ring-white/30`}
+                  className={`rounded-xl bg-white px-3 py-2 text-sm font-medium text-black shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-white/30`}
                   onClick={disconnectWallet}
                   aria-label="Disconnect wallet"
                   role="button"
@@ -462,7 +455,7 @@ export default function MvpTokenApp() {
               </>
             ) : (
               <button
-                className={`rounded-xl bg-black px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-black/30 dark:bg-white dark:text-black dark:focus:ring-white/30`}
+                className={`rounded-xl bg-white px-3 py-2 text-sm font-medium text-black shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-white/30`}
                 onClick={connectWallet}
                 aria-label="Connect wallet"
                 role="button"
@@ -471,15 +464,6 @@ export default function MvpTokenApp() {
                 Connect wallet
               </button>
             )}
-            <button
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="rounded-xl border border-black/10 bg-black/10 px-3 py-1.5 text-xs text-zinc-700 transition hover:bg-black/20 focus:outline-none focus:ring-2 focus:ring-black/30 dark:border-white/10 dark:bg-white/10 dark:text-zinc-200 dark:hover:bg-white/20 dark:focus:ring-white/30"
-              aria-label="Toggle theme"
-              role="button"
-              tabIndex={0}
-            >
-              {theme === "dark" ? "Light" : "Dark"} mode
-            </button>
           </div>
         </div>
       </header>
@@ -487,7 +471,7 @@ export default function MvpTokenApp() {
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <section
             id="create"
-            className="rounded-2xl border border-black/10 bg-black/5 p-6 shadow-xl backdrop-blur dark:border-white/10 dark:bg-white/5"
+            className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur"
           >
             <div className="mb-4">
               <h2 className="text-xl font-semibold">Create token</h2>
@@ -495,18 +479,18 @@ export default function MvpTokenApp() {
 
             <div className="grid gap-4">
               <div>
-                <label className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300">Name *</label>
+                <label className="mb-1 block text-sm text-zinc-300">Name *</label>
                 <input
-                  className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-black outline-none placeholder:text-zinc-400 focus:ring-2 focus:ring-emerald-400/30 dark:border-white/10 dark:bg-black/40 dark:text-white dark:placeholder:text-zinc-500"
+                  className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none placeholder:text-zinc-500 focus:ring-2 focus:ring-emerald-400/30"
                   placeholder="e.g. WalkCoin"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300">Symbol *</label>
+                <label className="mb-1 block text-sm text-zinc-300">Symbol *</label>
                 <input
-                  className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 uppercase text-black outline-none placeholder:text-zinc-400 focus:ring-2 focus:ring-emerald-400/30 dark:border-white/10 dark:bg-black/40 dark:text-white dark:placeholder:text-zinc-500"
+                  className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 uppercase text-white outline-none placeholder:text-zinc-500 focus:ring-2 focus:ring-emerald-400/30"
                   placeholder="e.g. WLK"
                   value={symbol}
                   onChange={(e) => setSymbol(e.target.value.slice(0, 11))}
@@ -514,16 +498,16 @@ export default function MvpTokenApp() {
               </div>
               <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300">Author *</label>
-                  <input
-                    className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-black outline-none placeholder:text-zinc-400 focus:ring-2 focus:ring-emerald-400/30 dark:border-white/10 dark:bg-black/40 dark:text-white dark:placeholder:text-zinc-500"
+                <label className="mb-1 block text-sm text-zinc-300">Author *</label>
+                <input
+                    className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none placeholder:text-zinc-500 focus:ring-2 focus:ring-emerald-400/30"
                     placeholder="Your name or address"
                     value={author}
                     onChange={(e) => setAuthor(e.target.value)}
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300">Logo *</label>
+                <label className="mb-1 block text-sm text-zinc-300">Logo *</label>
                   <div className="flex items-end gap-6 pt-1">
                     <LogoSwatch id={0} label="A" selected={logoId === 0} onSelect={setLogoId} />
                     <LogoSwatch id={1} label="B" selected={logoId === 1} onSelect={setLogoId} />
@@ -532,9 +516,9 @@ export default function MvpTokenApp() {
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300">Description *</label>
+                <label className="mb-1 block text-sm text-zinc-300">Description *</label>
                 <textarea
-                  className="min-h-[96px] w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-black outline-none placeholder:text-zinc-400 focus:ring-2 focus:ring-emerald-400/30 dark:border-white/10 dark:bg-black/40 dark:text-white dark:placeholder:text-zinc-500"
+                  className="min-h-[96px] w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none placeholder:text-zinc-500 focus:ring-2 focus:ring-emerald-400/30"
                   placeholder="Short description of the token and its purpose…"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -554,13 +538,13 @@ export default function MvpTokenApp() {
                 <>
                   <Stat label="Claimed by others" value={claimedSoFar.toLocaleString()} hint={`out of ${TOTAL.toLocaleString()}`} />
                   <Stat label="Claim count" value={claimedCount.toLocaleString()} />
-                  <div className="rounded-2xl border border-black/10 bg-black/5 p-4 dark:border-white/10 dark:bg-white/5">
-                    <div className="text-sm text-zinc-700 dark:text-zinc-300">Claim activity</div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="text-sm text-zinc-300">Claim activity</div>
                     <div className="mt-2">
                       {claimHistory.length > 0 ? (
                         <SimpleSparkline data={claimHistory} max={TOTAL} />
                       ) : (
-                        <div className="text-xs text-zinc-500 dark:text-zinc-400">No claims yet</div>
+                        <div className="text-xs text-zinc-400">No claims yet</div>
                       )}
                     </div>
                   </div>
@@ -569,7 +553,7 @@ export default function MvpTokenApp() {
             </div>
 
             <div className="mt-6 flex items-center justify-between">
-              <div className="text-xs text-zinc-500 dark:text-zinc-400">Supply: 1,000,000 • Claim reward: 100</div>
+              <div className="text-xs text-zinc-400">Supply: 1,000,000 • Claim reward: 100</div>
               <CtaButton
                 label={
                   createState === "success"
@@ -585,24 +569,24 @@ export default function MvpTokenApp() {
             </div>
 
             {!connected && (
-              <div className="mt-3 text-xs text-amber-600 dark:text-amber-300">Connect your wallet first to create a token.</div>
+              <div className="mt-3 text-xs text-amber-300">Connect your wallet first to create a token.</div>
             )}
           </section>
 
           <section
             id="claim"
-            className="rounded-2xl border border-black/10 bg-black/5 p-6 shadow-xl backdrop-blur dark:border-white/10 dark:bg-white/5"
+            className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur"
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold">Claim tokens</h2>
             </div>
-            <div className="mb-4 flex gap-4 border-b border-black/10 dark:border-white/10">
+            <div className="mb-4 flex gap-4 border-b border-white/10">
               <button
                 onClick={() => setClaimTab("summary")}
                 className={`pb-2 text-sm ${
                   claimTab === "summary"
-                    ? "border-b-2 border-emerald-400 text-black dark:text-white"
-                    : "text-zinc-500 dark:text-zinc-400"
+                    ? "border-b-2 border-emerald-400 text-white"
+                    : "text-zinc-400"
                 }`}
               >
                 Summary
@@ -611,8 +595,8 @@ export default function MvpTokenApp() {
                 onClick={() => setClaimTab("table")}
                 className={`pb-2 text-sm ${
                   claimTab === "table"
-                    ? "border-b-2 border-emerald-400 text-black dark:text-white"
-                    : "text-zinc-500 dark:text-zinc-400"
+                    ? "border-b-2 border-emerald-400 text-white"
+                    : "text-zinc-400"
                 }`}
               >
                 Claims
@@ -670,7 +654,7 @@ export default function MvpTokenApp() {
                 <RecentActivity claims={claims} />
 
                 <div className="mt-6 flex items-center justify-between">
-                  <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                  <div className="text-xs text-zinc-400">
                     {tokenAddress ? (
                       `Token contract: ${tokenAddress}`
                     ) : (
@@ -697,7 +681,7 @@ export default function MvpTokenApp() {
                 </div>
 
                 {!connected && (
-                  <div className="mt-3 text-xs text-amber-600 dark:text-amber-300">Connect your wallet to claim tokens.</div>
+                  <div className="mt-3 text-xs text-amber-300">Connect your wallet to claim tokens.</div>
                 )}
             </>
           )}
@@ -708,14 +692,14 @@ export default function MvpTokenApp() {
 
         <section
           id="history"
-          className="mt-6 rounded-2xl border border-black/10 bg-black/5 p-6 shadow-xl backdrop-blur dark:border-white/10 dark:bg-white/5"
+          className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur"
         >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold">History</h2>
               <div className="flex items-center gap-2">
                 <button
                   onClick={clearHistory}
-                  className="rounded-xl border border-black/10 bg-black/10 px-3 py-1.5 text-xs text-zinc-700 transition hover:bg-black/20 focus:outline-none focus:ring-2 focus:ring-black/30 dark:border-white/10 dark:bg-white/10 dark:text-zinc-200 dark:hover:bg-white/20 dark:focus:ring-white/30"
+                  className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs text-zinc-200 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
                   aria-label="Clear history"
                   role="button"
                   tabIndex={0}
@@ -725,7 +709,7 @@ export default function MvpTokenApp() {
               </div>
             </div>
             {history.length === 0 ? (
-              <div className="text-sm text-zinc-500 dark:text-zinc-400">No history.</div>
+              <div className="text-sm text-zinc-400">No history.</div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
                 {history.map((item) => (

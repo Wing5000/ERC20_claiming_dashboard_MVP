@@ -33,9 +33,9 @@ export default {
   plugins: [
     function ({ addBase }) {
       addBase({
-        ":root, .light": {
-          "--color-bg": "255 255 255",
-          "--color-fg": "0 0 0",
+        ":root": {
+          "--color-bg": "0 0 0",
+          "--color-fg": "255 255 255",
         },
         ".dark": {
           "--color-bg": "0 0 0",

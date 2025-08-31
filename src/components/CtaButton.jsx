@@ -12,15 +12,15 @@ export default function CtaButton({ label, onClick, disabled = false, state = "i
   };
 
   const bgColors = {
-    idle: "bg-[#f0f0f0] dark:bg-[#0d1110]",
-    loading: "bg-[#f0f0f0] dark:bg-[#0d1110]",
+    idle: "bg-[#0d1110]",
+    loading: "bg-[#0d1110]",
     success: "bg-emerald-600",
     error: "bg-rose-600",
   };
 
   const textColors = {
-    idle: "text-black dark:text-white",
-    loading: "text-black dark:text-white",
+    idle: "text-white",
+    loading: "text-white",
     success: "text-white",
     error: "text-white",
   };
