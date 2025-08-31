@@ -278,8 +278,46 @@ export default function MvpTokenApp() {
       localStorage.setItem("tc.history", JSON.stringify(stored));
       setHistory(stored);
 
+      const activityKey = `tc.activity.${contractInput.toLowerCase()}`;
+      let cachedActivity = JSON.parse(localStorage.getItem(activityKey) || "[]");
+      if (cachedActivity.length === 0) {
+        const logs = await provider.getLogs({
+          address: contractInput,
+          topics: [ethers.id("Claimed(address,uint256)")],
+          fromBlock: 0,
+          toBlock: "latest",
+        });
+        const iface = new ethers.Interface(ClaimableToken.abi);
+        cachedActivity = await Promise.all(
+          logs.map(async (log) => {
+            try {
+              const parsed = iface.parseLog(log);
+              const block = await provider.getBlock(log.blockNumber);
+              return {
+                type: "claim",
+                address: parsed.args.by,
+                amount: Number(ethers.formatUnits(parsed.args.amount, 18)),
+                time: Number(block.timestamp) * 1000,
+              };
+            } catch {
+              return null;
+            }
+          })
+        );
+        cachedActivity = cachedActivity.filter(Boolean);
+        localStorage.setItem(activityKey, JSON.stringify(cachedActivity));
+      }
+      setClaims((c) => [
+        ...c,
+        ...cachedActivity.map(({ address, amount, time }) => ({
+          address,
+          amount,
+          time,
+        })),
+      ]);
       setActivity((a) => [
         ...a,
+        ...cachedActivity,
         { type: "contract-loaded", token: contractInput, time: Date.now() },
       ]);
 
@@ -362,19 +400,22 @@ export default function MvpTokenApp() {
       setTxHash(tx.hash);
       await tx.wait();
       const addr = await signer.getAddress();
+      const claimTime = Date.now();
+      const claimEntry = {
+        type: "claim",
+        address: addr,
+        amount: eligibleAmount,
+        time: claimTime,
+      };
       setClaims((c) => [
         ...c,
-        { address: addr, amount: eligibleAmount, time: Date.now() },
+        { address: addr, amount: eligibleAmount, time: claimTime },
       ]);
-      setActivity((a) => [
-        ...a,
-        {
-          type: "claim",
-          address: addr,
-          amount: eligibleAmount,
-          time: Date.now(),
-        },
-      ]);
+      setActivity((a) => [...a, claimEntry]);
+      const actKey = `tc.activity.${tokenAddress.toLowerCase()}`;
+      const storedActs = JSON.parse(localStorage.getItem(actKey) || "[]");
+      storedActs.push(claimEntry);
+      localStorage.setItem(actKey, JSON.stringify(storedActs));
       const rem = await contract.remaining();
       const count = await contract.claimCount();
       const remainingTokens = Number(ethers.formatUnits(rem, 18));
