@@ -12,6 +12,7 @@ import Spinner from "./components/Spinner.jsx";
 import { toast } from "./components/ToastProvider.jsx";
 import RecentActivity from "./components/RecentActivity.jsx";
 import ClaimsTable from "./components/ClaimsTable.jsx";
+import Input from "./components/Input.jsx";
 
 // MVP single-file UI mock (no blockchain wired yet)
 // Tailwind only. Dark theme, simple modern buttons.
@@ -486,9 +487,8 @@ export default function MvpTokenApp() {
             <div className="grid gap-4">
               <div>
                 <label className="mb-1 block text-sm text-zinc-300">Name *</label>
-                <input
+                <Input
                   ref={nameRef}
-                  className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none placeholder:text-zinc-500 focus:ring-2 focus:ring-emerald-400/30"
                   placeholder="e.g. WalkCoin"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -496,8 +496,8 @@ export default function MvpTokenApp() {
               </div>
               <div>
                 <label className="mb-1 block text-sm text-zinc-300">Symbol *</label>
-                <input
-                  className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 uppercase text-white outline-none placeholder:text-zinc-500 focus:ring-2 focus:ring-emerald-400/30"
+                <Input
+                  className="uppercase"
                   placeholder="e.g. WLK"
                   value={symbol}
                   onChange={(e) => setSymbol(e.target.value.slice(0, 11))}
@@ -506,8 +506,7 @@ export default function MvpTokenApp() {
               <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-2">
                 <div>
                 <label className="mb-1 block text-sm text-zinc-300">Author *</label>
-                <input
-                    className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none placeholder:text-zinc-500 focus:ring-2 focus:ring-emerald-400/30"
+                <Input
                     placeholder="Your name or address"
                     value={author}
                     onChange={(e) => setAuthor(e.target.value)}
@@ -524,8 +523,9 @@ export default function MvpTokenApp() {
               </div>
               <div>
                 <label className="mb-1 block text-sm text-zinc-300">Description *</label>
-                <textarea
-                  className="min-h-[96px] w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none placeholder:text-zinc-500 focus:ring-2 focus:ring-emerald-400/30"
+                <Input
+                  as="textarea"
+                  className="min-h-[96px]"
                   placeholder="Short description of the token and its purpose…"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
