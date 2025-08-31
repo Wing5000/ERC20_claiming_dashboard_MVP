@@ -14,6 +14,7 @@ import RecentActivity from "./components/RecentActivity.jsx";
 import ClaimsTable from "./components/ClaimsTable.jsx";
 import Input from "./components/Input.jsx";
 import Stat from "./components/Stat.jsx";
+import StickyCTA from "./components/StickyCTA.jsx";
 
 // MVP single-file UI mock (no blockchain wired yet)
 // Tailwind only. Dark theme, simple modern buttons.
@@ -538,6 +539,27 @@ export default function MvpTokenApp() {
     }
   };
 
+  const addTokenToWallet = async () => {
+    if (!window.ethereum || !tokenAddress) return;
+    try {
+      await window.ethereum.request({
+        method: "wallet_watchAsset",
+        params: {
+          type: "ERC20",
+          options: {
+            address: tokenAddress,
+            symbol: symbol || "TKN",
+            decimals: 18,
+          },
+        },
+      });
+      toast.success("Token added to wallet");
+    } catch (err) {
+      console.error("Add token failed", err);
+      toast.error("Add token failed");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <BackgroundFX />
@@ -756,6 +778,7 @@ export default function MvpTokenApp() {
                       symbol={sampleToken.symbol}
                       progress={Math.round(((TOTAL - remaining) / TOTAL) * 100)}
                       chainId={chainId}
+                      onAddToken={addTokenToWallet}
                     />
 
                     <EligibilityInfo
@@ -877,6 +900,11 @@ export default function MvpTokenApp() {
       {claimState === "success" && txHash && (
         <SuccessModal txHash={txHash} chainId={chainId} onClose={closeModal} />
       )}
+      <StickyCTA
+        onClick={connected ? doClaim : connectWallet}
+        disabled={connected ? !tokenAddress || remaining === 0 : false}
+        state={connected ? claimState : "idle"}
+      />
     </div>
   );
 }

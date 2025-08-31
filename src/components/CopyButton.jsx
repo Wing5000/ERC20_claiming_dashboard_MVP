@@ -1,11 +1,16 @@
 import React from "react";
 import { toast } from "./ToastProvider.jsx";
 
+function shorten(value) {
+  if (!value) return "";
+  return `${value.slice(0, 6)}…${value.slice(-4)}`;
+}
+
 export default function CopyButton({ value, className = "" }) {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(value);
-      toast.success("Copied");
+      toast.success("Skopiowano!");
     } catch (err) {
       toast.error("Copy failed");
     }
@@ -14,10 +19,11 @@ export default function CopyButton({ value, className = "" }) {
   return (
     <button
       onClick={handleCopy}
-      title="Copy"
+      title={value}
       aria-label="Copy to clipboard"
-      className={`rounded border border-white/10 bg-white/10 p-1 text-zinc-200 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30 ${className}`}
+      className={`flex items-center gap-1 rounded-xl border border-white/10 bg-white/10 px-2 py-1 text-xs text-zinc-200 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30 ${className}`}
     >
+      <span className="font-mono">{shorten(value)}</span>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 24 24"
@@ -25,6 +31,7 @@ export default function CopyButton({ value, className = "" }) {
         strokeWidth={1.5}
         stroke="currentColor"
         className="h-4 w-4"
+        aria-hidden="true"
       >
         <path
           strokeLinecap="round"
