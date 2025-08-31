@@ -176,43 +176,6 @@ function HistoryItem({ item, stats, onRefresh }) {
   );
 }
 
-function SegmentedControl() {
-  const [active, setActive] = useState("create");
-  const items = [
-    { id: "create", label: "Create" },
-    { id: "claim", label: "Claim" },
-    { id: "history", label: "History" },
-  ];
-
-  const handleClick = (id) => {
-    setActive(id);
-    const el = document.getElementById(id);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth" });
-    }
-  };
-
-  return (
-    <div className="mb-6 w-full">
-      <div className="flex w-full flex-col rounded-xl border border-black/10 bg-black/5 p-1 xl:flex-row dark:border-white/10 dark:bg-white/5">
-        {items.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => handleClick(item.id)}
-            className={`w-full rounded-lg px-4 py-2 text-sm transition xl:flex-1 ${
-              active === item.id
-                ? "bg-black/20 text-black dark:bg-white/20 dark:text-white"
-                : "text-zinc-600 hover:bg-black/10 dark:text-zinc-400 dark:hover:bg-white/10"
-            }`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export default function MvpTokenApp() {
   // --- UI state (mock only) ---
   const [logoId, setLogoId] = useState(0);
@@ -487,7 +450,6 @@ export default function MvpTokenApp() {
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-4 pb-16">
-        <SegmentedControl />
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
           <section
             id="create"
