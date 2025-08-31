@@ -450,10 +450,10 @@ export default function MvpTokenApp() {
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-4 pb-16">
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <section
             id="create"
-            className="rounded-2xl border border-black/10 bg-black/5 p-6 shadow-xl backdrop-blur dark:border-white/10 dark:bg-white/5 xl:col-span-4"
+            className="rounded-2xl border border-black/10 bg-black/5 p-6 shadow-xl backdrop-blur dark:border-white/10 dark:bg-white/5"
           >
             <div className="mb-4">
               <h2 className="text-xl font-semibold">Create token</h2>
@@ -557,7 +557,7 @@ export default function MvpTokenApp() {
 
           <section
             id="claim"
-            className="rounded-2xl border border-black/10 bg-black/5 p-6 shadow-xl backdrop-blur dark:border-white/10 dark:bg-white/5 xl:col-span-4"
+            className="rounded-2xl border border-black/10 bg-black/5 p-6 shadow-xl backdrop-blur dark:border-white/10 dark:bg-white/5"
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold">Claim tokens</h2>
@@ -670,11 +670,12 @@ export default function MvpTokenApp() {
 
             {claimTab === "table" && <ClaimsTable claims={claims} />}
           </section>
+        </div>
 
-          <section
-            id="history"
-            className="rounded-2xl border border-black/10 bg-black/5 p-6 shadow-xl backdrop-blur dark:border-white/10 dark:bg-white/5 xl:col-span-4"
-          >
+        <section
+          id="history"
+          className="mt-6 rounded-2xl border border-black/10 bg-black/5 p-6 shadow-xl backdrop-blur dark:border-white/10 dark:bg-white/5"
+        >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold">History</h2>
               <div className="flex items-center gap-2">
@@ -703,8 +704,7 @@ export default function MvpTokenApp() {
                 ))}
               </div>
             )}
-          </section>
-        </div>
+        </section>
       </main>
 
       <footer className="border-t border-black/10 py-8 text-center text-xs text-zinc-500 dark:border-white/10 dark:text-zinc-400">
