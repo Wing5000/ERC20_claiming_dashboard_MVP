@@ -241,18 +241,42 @@ export default function MvpTokenApp() {
         ClaimableToken.abi,
         provider
       );
-      const [rem, count, tokenName, tokenSymbol] = await Promise.all([
-        contract.remaining(),
-        contract.claimCount(),
-        contract.name?.(),
-        contract.symbol?.(),
-      ]);
+      const [rem, count, tokenName, tokenSymbol, blockNumber, network] =
+        await Promise.all([
+          contract.remaining(),
+          contract.claimCount(),
+          contract.name?.(),
+          contract.symbol?.(),
+          provider.getBlockNumber(),
+          provider.getNetwork(),
+        ]);
       const remainingTokens = Number(ethers.formatUnits(rem, 18));
       setTokenAddress(contractInput);
       setRemaining(remainingTokens);
       setClaimedCount(Number(count));
       if (tokenName) setName(tokenName);
       if (tokenSymbol) setSymbol(tokenSymbol);
+
+      const entry = {
+        chainId: Number(network.chainId),
+        createdAt: Date.now(),
+        token: contractInput,
+        pool: contractInput,
+        name: tokenName || "Token",
+        symbol: tokenSymbol || "TKN",
+        author: "",
+        description: "",
+        logoId: 0,
+        poolCreationBlock: blockNumber,
+      };
+      let stored = JSON.parse(localStorage.getItem("tc.history") || "[]");
+      stored = stored.filter(
+        (h) => h.token.toLowerCase() !== contractInput.toLowerCase()
+      );
+      stored.unshift(entry);
+      localStorage.setItem("tc.history", JSON.stringify(stored));
+      setHistory(stored);
+
       setLoadState("idle");
     } catch (err) {
       console.error("Failed to load contract", err);
